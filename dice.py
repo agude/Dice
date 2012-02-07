@@ -46,29 +46,36 @@ class dice:
     def __init__(self,type):
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.type = type
+        self.tmp  = type
+        self.lowest = 0
         if 'L'  in self.type:
             numL = (self.type.split('L')[0]).split('-')[-1]
             if not numL:
                 self.lowest = 1
             else:
                 self.lowest = int(numL)
-        print self.lowest
-        self.number = int(type.split('d')[0])
-        self.size = int(type.split('d')[1])
+            self.type = '-'.join(self.type.split('-')[:-1])
+            print self.type
+        self.number = int(self.type.split('d')[0])
+        self.size = int(self.type.split('d')[1])
     def roll(self,dosum=False):
         """ Roll the dice and print the result. """
         values = []
         for i in xrange(0,self.number):
             values.append(randint(1,self.size))
+        values.sort()
+        values.reverse()
+        for i in xrange(0,self.lowest):
+            values.pop()
         if dosum:
             print sum(values)
         else:
             print values
 
 d = dice("4d6-L")
-d.roll()
-d.roll()
-d.roll()
-d.roll()
-d.roll()
-d.roll()
+d.roll(True)
+d.roll(True)
+d.roll(True)
+d.roll(True)
+d.roll(True)
+d.roll(True)
