@@ -43,11 +43,14 @@ class dice:
     """
 
     """
-    def __init__(self,type):
+    def __init__(self,imute):
         """ Sets up the dice by parsing a string of its type: 3d5 """
-        self.type = type
-        self.tmp  = type
-        self.lowest = 0
+        self.imute = imute
+        self.lowest = 0 # Subtract n lowest dice
+        self.addToTotal = 0 # Add this number to total roll
+        self.addToEach = 0 # Add this number to each die
+        self.__parse__()
+
         if 'L'  in self.type:
             numL = (self.type.split('L')[0]).split('-')[-1]
             if not numL:
@@ -58,6 +61,13 @@ class dice:
             print self.type
         self.number = int(self.type.split('d')[0])
         self.size = int(self.type.split('d')[1])
+
+    def __parse__(self):
+        """ Parse a imute format string. """
+        self.__getLowest__()
+        self.__getAddToTotal__()
+        self.__getAddToEach__()
+
     def roll(self,dosum=False):
         """ Roll the dice and print the result. """
         values = []
