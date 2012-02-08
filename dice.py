@@ -47,33 +47,38 @@ class dice:
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.imute = imute
         self.lowest = 0 # Subtract n lowest dice
+        self.highest = 0 # Subtract n highest dice
         self.addToTotal = 0 # Add this number to total roll
         self.addToEach = 0 # Add this number to each die
         self.number = 0 # Number of dice to roll
         self.size = 0 # Size of each die
+        self.doSum = False # Sum dice by default.
         self.__parse__()
 
-        if 'L'  in self.type:
-            numL = (self.type.split('L')[0]).split('-')[-1]
-            if not numL:
-                self.lowest = 1
-            else:
-                self.lowest = int(numL)
-            self.type = '-'.join(self.type.split('-')[:-1])
-            print self.type
-        self.number = int(self.type.split('d')[0])
-        self.size = int(self.type.split('d')[1])
+        #if 'L'  in self.type:
+        #    numL = (self.type.split('L')[0]).split('-')[-1]
+        #    if not numL:
+        #        self.lowest = 1
+        #    else:
+        #        self.lowest = int(numL)
+        #    self.type = '-'.join(self.type.split('-')[:-1])
+        #    print self.type
+        #self.number = int(self.type.split('d')[0])
+        #self.size = int(self.type.split('d')[1])
 
     def __parse__(self):
         """ Parse a imute format string. """
-        self.__getLowest__()
-        self.__getAddToTotal__()
-        self.__getAddToEach__()
-        self.__getNumber__()
-        self.__getSize__()
+        pass
+        #self.__getLowest__()
+        #self.__getAddToTotal__()
+        #self.__getAddToEach__()
+        #self.__getNumber__()
+        #self.__getSize__()
 
-    def roll(self,dosum=False):
+    def roll(self,doSum=None):
         """ Roll the dice and print the result. """
+        if doSum == None:
+            doSum = self.doSum
         values = []
         for i in xrange(0,self.number):
             values.append(randint(1,self.size))
@@ -88,13 +93,25 @@ class dice:
 
 
 # Test Function
-def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0):
+def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0, highest=0):
     t = toTest(inStr)
-    assert t.number == number
-    assert t.size == size
-    assert t.addToTotal == addToTotal
-    assert t.addToEach == addToEach
-    assert t.lowest == lowest
+    try:
+        assert t.number == number
+        assert t.size == size
+        assert t.addToTotal == addToTotal
+        assert t.addToEach == addToEach
+        assert t.lowest == lowest
+        assert t.highest == highest
+    except AssertionError:
+        print "Fail %s"%(inStr)
+    else:
+        print "Pass %s"%(inStr)
 
 # Tests
+testClass(dice, "0d0") # Always passes
 testClass(dice, "3d6", 3, 6)
+testClass(dice, "10d7+4", 10, 7, 4)
+testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
+testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
+testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
+testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
