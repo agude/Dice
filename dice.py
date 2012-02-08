@@ -49,6 +49,8 @@ class dice:
         self.lowest = 0 # Subtract n lowest dice
         self.addToTotal = 0 # Add this number to total roll
         self.addToEach = 0 # Add this number to each die
+        self.number = 0 # Number of dice to roll
+        self.size = 0 # Size of each die
         self.__parse__()
 
         if 'L'  in self.type:
@@ -67,6 +69,8 @@ class dice:
         self.__getLowest__()
         self.__getAddToTotal__()
         self.__getAddToEach__()
+        self.__getNumber__()
+        self.__getSize__()
 
     def roll(self,dosum=False):
         """ Roll the dice and print the result. """
@@ -82,10 +86,15 @@ class dice:
         else:
             print values
 
-d = dice("4d6-L")
-d.roll(True)
-d.roll(True)
-d.roll(True)
-d.roll(True)
-d.roll(True)
-d.roll(True)
+
+# Test Function
+def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0):
+    t = toTest(inStr)
+    assert t.number == number
+    assert t.size == size
+    assert t.addToTotal == addToTotal
+    assert t.addToEach == addToEach
+    assert t.lowest == lowest
+
+# Tests
+testClass(dice, "3d6", 3, 6)
