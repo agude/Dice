@@ -78,6 +78,7 @@ class dice:
     def __getLowestHighest__(self):
         """ Parse "-nL-mH" and set lowest = n, highest = m """
         if "L" in self.imute:
+            pass
 
 
     def roll(self,doSum=None):
@@ -99,35 +100,66 @@ class dice:
 # LL Parser
 class llParser:
     """ LL Parser """
-    def __init__(self, pTable, input, k=1):
+    def __init__(self, pTable, tokenizer, k=1):
         """ """
         self.k = k
         self.pTable = pTable
         self.input = input
-        self.stack = ['$','^']
+        self.stack = ['','^']
         self.transform = []
+
+    def __loop__(self):
+        """ Run while loop until self.stack is empty """
+        while self.stack:
+            pass
+
+class diceTokenizer:
+    """ Returns a dice token """
+    def __init__(self,input):
+        """ """
+        self.input = input
+        self.end = len(self.input)
+        self.i = 0
+        self.ints = ['0','1','2','3','4','5','6','7','8','9']
+    
+    def __iter__(self):
+        """ Allows iteration over self """
+        return self
+
+    def next(self):
+        """ Return next item in iterization """
+        if self.i == self.end:
+            raise StopIteration
+        else:
+            toReturn = self.input[self.i]
+            self.i += 1
+            if toReturn in self.ints:
+                for i in xrange(self.i,self.end):
+                    testChar = self.input[i]
+                    self.i = i
+                    if testChar in self.ints:
+                        toReturn += testChar
+                    else: 
+                        break
+
+            return toReturn
 
 
 # Parsing table
+BNF = """
+<dice-notation> ::= <int> <die-type> <global-mod> <drop>
+<die-type> ::= "d" <int> | "(" "d" <int> <local-mod> ")"
+<local-mod> ::= "+" <int> | "-" <int> | ""
+<global-mod> ::= "+" <int> | "-" <int> | ""
+<drop> ::= <drop-mod> <drop-mod> | <drop-mod> | ""
+<drop-mod> ::= "-" <drop-mod-body> | "+" <drop-mod-body>
+<drop-mod-body> ::= <int> <drop-mod-end> | <drop-mod-end>
+<drop-mod-end> ::= "h" | "l"
+<int> ::= <int> <int> | <int> 
+"""
 parseTable = {
-        "d":,
-        "(":,
-        ")":,
-        "L":,
-        "l":,
-        "H":,
-        "h":,
-        "1":,
-        "2":,
-        "3":,
-        "4":,
-        "5":,
-        "6":,
-        "7":,
-        "8":,
-        "9":,
-        }
-
+        
+        } 
 # Test Function
 def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0, highest=0):
     t = toTest(inStr)
@@ -144,11 +176,22 @@ def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest
         print "Pass %s"%(inStr)
 
 # Tests
-testClass(dice, "0d0") # Always passes
-testClass(dice, "3d6", 3, 6)
-testClass(dice, "10d7+4", 10, 7, 4)
-testClass(dice, "8d12-3", 8, 12, -3)
-testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
-testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
-testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
-testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
+if __name__ == '__main__':
+    testClass(dice, "0d0") # Always passes
+    testClass(dice, "3d6", 3, 6)
+    testClass(dice, "10d7+4", 10, 7, 4)
+    testClass(dice, "8d12-3", 8, 12, -3)
+    testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
+    testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
+    testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
+    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
+
+    t = diceTokenizer("5(d10-1)+15-3L-H")
+    for s in t:
+        print s
+    t = diceTokenizer("3d6")
+    for s in t:
+        print s
+    t = diceTokenizer("30d6")
+    for s in t:
+        print s
