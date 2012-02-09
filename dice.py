@@ -68,12 +68,17 @@ class dice:
 
     def __parse__(self):
         """ Parse a imute format string. """
-        pass
+        self.__getLowestHighest__()
         #self.__getLowest__()
         #self.__getAddToTotal__()
         #self.__getAddToEach__()
         #self.__getNumber__()
         #self.__getSize__()
+
+    def __getLowestHighest__(self):
+        """ Parse "-nL-mH" and set lowest = n, highest = m """
+        if "L" in self.imute:
+
 
     def roll(self,doSum=None):
         """ Roll the dice and print the result. """
@@ -91,6 +96,37 @@ class dice:
         else:
             print values
 
+# LL Parser
+class llParser:
+    """ LL Parser """
+    def __init__(self, pTable, input, k=1):
+        """ """
+        self.k = k
+        self.pTable = pTable
+        self.input = input
+        self.stack = ['$','^']
+        self.transform = []
+
+
+# Parsing table
+parseTable = {
+        "d":,
+        "(":,
+        ")":,
+        "L":,
+        "l":,
+        "H":,
+        "h":,
+        "1":,
+        "2":,
+        "3":,
+        "4":,
+        "5":,
+        "6":,
+        "7":,
+        "8":,
+        "9":,
+        }
 
 # Test Function
 def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0, highest=0):
@@ -111,6 +147,7 @@ def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest
 testClass(dice, "0d0") # Always passes
 testClass(dice, "3d6", 3, 6)
 testClass(dice, "10d7+4", 10, 7, 4)
+testClass(dice, "8d12-3", 8, 12, -3)
 testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
 testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
 testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
