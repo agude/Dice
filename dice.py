@@ -53,7 +53,7 @@ class dice:
         self.number = 0 # Number of dice to roll
         self.size = 0 # Size of each die
         self.doSum = False # Sum dice by default.
-        self.__parse__()
+        self.__parse()
 
         #if 'L'  in self.type:
         #    numL = (self.type.split('L')[0]).split('-')[-1]
@@ -66,16 +66,16 @@ class dice:
         #self.number = int(self.type.split('d')[0])
         #self.size = int(self.type.split('d')[1])
 
-    def __parse__(self):
+    def __parse(self):
         """ Parse a imute format string. """
-        self.__getLowestHighest__()
-        #self.__getLowest__()
-        #self.__getAddToTotal__()
-        #self.__getAddToEach__()
-        #self.__getNumber__()
-        #self.__getSize__()
+        self.__getLowestHighest()
+        #self.__getLowest()
+        #self.__getAddToTotal()
+        #self.__getAddToEach()
+        #self.__getNumber()
+        #self.__getSize()
 
-    def __getLowestHighest__(self):
+    def __getLowestHighest(self):
         """ Parse "-nL-mH" and set lowest = n, highest = m """
         if "L" in self.imute:
             pass
@@ -97,22 +97,7 @@ class dice:
         else:
             print values
 
-# LL Parser
-class llParser:
-    """ LL Parser """
-    def __init__(self, pTable, tokenizer, k=1):
-        """ """
-        self.k = k
-        self.pTable = pTable
-        self.input = input
-        self.stack = ['','^']
-        self.transform = []
-
-    def __loop__(self):
-        """ Run while loop until self.stack is empty """
-        while self.stack:
-            pass
-
+#Tokenizer
 class diceTokenizer:
     """ Returns a dice token """
     def __init__(self,input):
@@ -124,28 +109,70 @@ class diceTokenizer:
     
     def __iter__(self):
         """ Allows iteration over self """
-        return self
+        return self.__makeIter()
 
-    def next(self):
+    def __makeIter(self):
         """ Return next item in iterization """
-        if self.i == self.end:
-            raise StopIteration
-        else:
-            toReturn = self.input[self.i]
-            self.i += 1
-            if toReturn in self.ints:
-                for i in xrange(self.i,self.end):
-                    testChar = self.input[i]
-                    self.i = i
-                    if testChar in self.ints:
-                        toReturn += testChar
-                    else: 
-                        break
+        buffer = ''
+        for i in xrange(self.end):
+            char = self.input[i]
+            if char not in self.ints:
+                if buffer:
+                    yield buffer
+                    buffer = ''
+                yield char
+            elif i == self.end-1:
+                yield char
+            else:
+                buffer += char
 
-            return toReturn
+
+# LL Parser
+class llParser:
+    """ LL Parser """
+    def __init__(self, pTable, tokenizer, k=1):
+        """ """
+        self.k = k
+        self.pTable = pTable
+        self.input = input
+        self.stack = ['<START>']
+        self.transform = []
+        self.tokenizer = tokenizer
+        self.__loop()
+
+    def __loop(self):
+        """ Run while loop until self.stack is empty """
+        while self.stack:
+            stackElement =self.stack.pop()
+            for streamElement in self.tokenizer:
+                print stackElement,streamElement
 
 
 # Parsing table
+class pTable:
+    """ """
+    def __init__(self):
+        self.cTable = {
+            "<START>": None,
+            "<int>": self.__isInt
+                }
+
+    def compare(self,a,b):
+        """ Compare a,b using the compairison table """
+        try:
+            compFunction = self.cTable[a]
+        except KeyError:
+            return None # Should raise error
+        return compFunction(b)
+
+    def __isInt(self,s):
+        """ Check if s is an integer """
+        try:
+            int(s)
+            return True
+        except ValueError:
+            return False
+
 BNF = """
 <dice-notation> ::= <int> <die-type> <global-mod> <drop>
 <die-type> ::= "d" <int> | "(" "d" <int> <local-mod> ")"
@@ -155,11 +182,8 @@ BNF = """
 <drop-mod> ::= "-" <drop-mod-body> | "+" <drop-mod-body>
 <drop-mod-body> ::= <int> <drop-mod-end> | <drop-mod-end>
 <drop-mod-end> ::= "h" | "l"
-<int> ::= <int> <int> | <int> 
 """
-parseTable = {
-        
-        } 
+
 # Test Function
 def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0, highest=0):
     t = toTest(inStr)
@@ -186,12 +210,9 @@ if __name__ == '__main__':
     testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
     testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
 
-    t = diceTokenizer("5(d10-1)+15-3L-H")
-    for s in t:
-        print s
-    t = diceTokenizer("3d6")
-    for s in t:
-        print s
-    t = diceTokenizer("30d6")
-    for s in t:
-        print s
+#    t = diceTokenizer("5(d10-1)+15-3L-H")
+
+#    ll = llParser([],t)
+    p = pTable()
+    print p.compare("<int>", '42')
+    print p.compare("<int>", '42.1')
