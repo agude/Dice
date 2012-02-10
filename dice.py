@@ -116,7 +116,7 @@ class diceTokenizer:
         buffer = ''
         for i in xrange(self.end):
             char = self.input[i]
-            if i == self.end-1:
+            if i == self.end-1 and char in (self.ints+self.LH):
                 # End of stream, yield all
                 yield buffer+char
             elif (char in self.symbols): 
@@ -155,18 +155,32 @@ class llParser:
     def __loop(self):
         """ Run while loop until self.stack is empty """
         streamElement = ''
-        keepStreamElement = True
 
         for streamElement in self.tokenizer:
+            keepStreamElement = True
             while keepStreamElement and self.stack:
                 stackElement = self.stack.pop()
                 comp = self.table.compare
                 result = self.table.compare(stackElement, streamElement)
-                print result
+                print stackElement, streamElement, result
                 if result is True:
+                    keepStreamElement = False
                     continue 
                 else:
                     self.table.pTable[stackElement](streamElement, self.stack)
+                print self.stack
+        if self.stack:
+            # Out of stream, but still have stack
+            # We check to make sure the stack is isomorphic to ""
+            streamElement = ''
+            while self.stack:
+                stackElement = self.stack.pop()
+                result = self.table.compare(stackElement, streamElement)
+                if result:
+                    continue
+                else:
+                    self.table.pTable[stackElement](streamElement, self.stack)
+            else:
                 print self.stack
 
 
@@ -178,20 +192,21 @@ class Table:
         self.cTable = {
             "<START>": None,
             "<die-type>": None,
-            "<local-mod>": None,
-            "<global-mod>": None,
+            "<local-mod>": self.__isLocalMod,
+            "<global-mod>": self.__isGlobalMod,
             "<drop>": None,
             "<int-die-num>": self.__isInt,
-            "<int-die-size>": self.__isInt,
-            "<int-local-mod>": self.__isInt,
-            "<int-global-mod>": self.__isInt,
-            "<int-drop-mod>": self.__isInt,
+            "<str-die-size>": self.__isStrDieSize,
+            "<str-drop-mod>": self.__isStrDropMod,
                 }
         
         self.pTable = {
                 "<START>": self.__Start,
                 "<die-type>": self.__dieType,
-                "<local-mod>": self.__localMod
+                "<str-die-size>": self.__strDieSize,
+                "<drop>": self.__drop,
+                "<local-mod>": self.__localMod,
+                "<global-mod>": self.__globalMod,
                 }
 
     def compare(self,a,b):
@@ -218,34 +233,93 @@ class Table:
 
     def __dieType(self, s, stack):
         """ Take action when stack status is <die-type> """
-        if s == 'd':
-            stack.append("<int-die-size>")
-            stack.append("d")
-            return True
-        elif s == '(':
+        if s == '(':
             stack.append(")")
             stack.append("<local-mod>")
-            stack.append("<int-die-size>")
-            stack.append("d")
+            stack.append("<str-die-size>")
             stack.append("(")
+            return True
+        elif len(s) >= 2:
+            stack.append("<str-die-size>")
+        else:
+            return False
+
+    def __strDieSize(self, s, stack):
+        """ Take action when stack status is <die-type> """
+        if s == '(':
+            stack.append(")")
+            stack.append("<local-mod>")
+            stack.append("<str-die-size>")
+            stack.append("(")
+            return True
+        elif s.len() >= 2:
+            stack.append("<str-die-size>")
+        else:
+            return False
+
+    def __drop(self, s, stack):
+        """ Take action when stack status is <drop> """
+        if s == '':
+            return True
+        elif s[-1] in ['L','l','H','h']:
+            stack.append("<drop>")
+            stack.append("<str-drop-mod>")
             return True
         else:
             return False
 
-    def __LocalMod(self, s, stack):
-        """ Take action when stack status is <die-type> """
-        symbol = None
-        if s == ')':
+    def __localMod(self, s, stack):
+        """ Take action when stack status is <local-mod> """
+        if s == '':
             return True
-        elif s == '+':
-            symbol = '+'   
-        elif s == '-':
-            symbol = '-'
-        if symbol:
-            stack.append("<int-die-size>")
-            stack.append(symbol)
+        elif s[0] in ['-','+']:
+            stack.append("<str-local-mod>")
+            return True
         else:
             return False
+
+    def __globalMod(self, s, stack):
+        """ Take action when stack status is <global-mod> """
+        return self.__localMod(s, stack)
+
+    def __isStrDieSize(self,s):
+        """ Check if s matches <str-die-size> """
+        try:
+            assert s[0] == 'd'
+            int(s[1:])
+            return True
+        except AssertionError, ValueError:
+            return False
+
+    def __isStrDropMod(self,s):
+        """ Check if s matches <str-drop-mod> """
+        try:
+            assert s[0] == '-'
+            assert s[-1] in ['L','l','H','h']
+            mid = s[1:-1]
+            if mid != '':
+                int(mid)
+            return True
+        except AssertionError, ValueError:
+            return False
+
+    def __isLocalMod(self,s):
+        """ Check if s matches <local-mod> """
+        if s == '':
+            return True
+        else:
+            try:
+                assert s[0] in ['-','+']
+                int(s[1:])
+                return True
+            except AssertionError:
+                return False
+            except ValueError:
+                return False
+    
+    def __isGlobalMod(self,s):
+        """ Check if s matches <global-mod> """
+        return self.__isLocalMod(s)
 
     def __isInt(self,s):
         """ Check if s is an integer """
@@ -260,7 +334,8 @@ BNF = """
 <die-type> ::= <str-die-size> | "(" <str-die-size> <local-mod> ")"
 <local-mod> ::= <str-local-mod> | ""
 <global-mod> ::= <str-global-mod> | ""
-<drop> ::= <str-drop-mod> <str-drop-mod> | <str-drop-mod> | ""
+<drop> ::= <str-drop-mod> <drop> | ""
+<str-drop-mod> ::= <str-drop-high> | <str-drop-low>
 """
 
 # Test Function
@@ -289,13 +364,12 @@ if __name__ == '__main__':
 #    testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
 #    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
 
-    d = diceTokenizer("5(d10-1)+15-3L-H")
-    d = diceTokenizer("3d6-1")
-    for i in d:
-        print i
-#    t = Table()
-
-#    ll = llParser(t,d)
+    strings = ['0d0','3d6', "10d7+4", "8d12-3", "4d2-2L", "23d24-5H", "7(d20+1)-L-2H", "5(d10-1)+15-3L-H"]
+    for string in strings:
+        d = diceTokenizer(string)
+        print "\n"+string
+        t = Table()
+        ll = llParser(t,d)
 #    print p.compare("<int>", '42')
 #    print p.compare("<int>", '42.1')
 #    print p.compare('1', '1')
