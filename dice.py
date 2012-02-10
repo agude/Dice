@@ -181,9 +181,6 @@ class Table:
             "<local-mod>": None,
             "<global-mod>": None,
             "<drop>": None,
-            "<drop-mod>": None,
-            "<drop-mod-body>": None,
-            "<drop-mod-end>": self.__isLH,
             "<int-die-num>": self.__isInt,
             "<int-die-size>": self.__isInt,
             "<int-local-mod>": self.__isInt,
@@ -258,22 +255,12 @@ class Table:
         except ValueError:
             return False
 
-    def __isLH(self,s):
-        """ Check if s is L or H """
-        if s in ['L','l','H','h']:
-            return True
-        else:
-            return False
-
 BNF = """
 <dice-notation> ::= <int-die-num> <die-type> <global-mod> <drop>
-<die-type> ::= "d" <int-die-size> | "(" "d" <int-die-size> <local-mod> ")"
-<local-mod> ::= "+" <int-local-mod> | "-" <int-local-mod> | ""
-<global-mod> ::= "+" <int-global-mod> | "-" <int-global-mod> | ""
-<drop> ::= <drop-mod> <drop-mod> | <drop-mod> | ""
-<drop-mod> ::= "-" <drop-mod-body> | "+" <drop-mod-body>
-<drop-mod-body> ::= <int-drop-mod> <drop-mod-end> | <drop-mod-end>
-<drop-mod-end> ::= "h" | "l"
+<die-type> ::= <str-die-size> | "(" <str-die-size> <local-mod> ")"
+<local-mod> ::= <str-local-mod> | ""
+<global-mod> ::= <str-global-mod> | ""
+<drop> ::= <str-drop-mod> <str-drop-mod> | <str-drop-mod> | ""
 """
 
 # Test Function
@@ -303,6 +290,7 @@ if __name__ == '__main__':
 #    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
 
     d = diceTokenizer("5(d10-1)+15-3L-H")
+    d = diceTokenizer("3d6-1")
     for i in d:
         print i
 #    t = Table()
