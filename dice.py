@@ -103,8 +103,9 @@ class diceTokenizer:
         """ """
         self.input = input
         self.end = len(self.input)
-        self.i = 0
         self.ints = ['0','1','2','3','4','5','6','7','8','9']
+        self.LH = ['L','l','H','h']
+        self.symbols = ['+','-','d']
     
     def __iter__(self):
         """ Allows iteration over self """
@@ -115,15 +116,27 @@ class diceTokenizer:
         buffer = ''
         for i in xrange(self.end):
             char = self.input[i]
-            if char not in self.ints:
+            if i == self.end-1:
+                # End of stream, yield all
+                yield buffer+char
+            elif (char in self.symbols): 
+                if (buffer == ''):
+                    # If buffer is empty we add +,-,d as the first
+                    buffer += char
+                else: 
+                    # But if we already have a buffer, we yield it, 
+                    # and start a new one to avoid "-3-"
+                    yield buffer
+                    buffer = char
+            elif (char in self.ints+self.LH):
+                #Add numbers, or L/H to the buffer
+                buffer += char
+            else:
+                # Some other character, yield the buffer, and restart
                 if buffer:
                     yield buffer
                     buffer = ''
                 yield char
-            elif i == self.end-1:
-                yield char
-            else:
-                buffer += char
 
 
 # LL Parser
@@ -180,7 +193,7 @@ class Table:
         
         self.pTable = {
                 "<START>": self.__Start,
-                "<die-type>": self.__dieType
+                "<die-type>": self.__dieType,
                 "<local-mod>": self.__localMod
                 }
 
@@ -234,9 +247,6 @@ class Table:
         if symbol:
             stack.append("<int-die-size>")
             stack.append(symbol)
-        else:
-            return False
-            return True
         else:
             return False
 
@@ -293,9 +303,11 @@ if __name__ == '__main__':
 #    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
 
     d = diceTokenizer("5(d10-1)+15-3L-H")
-    t = Table()
+    for i in d:
+        print i
+#    t = Table()
 
-    ll = llParser(t,d)
+#    ll = llParser(t,d)
 #    print p.compare("<int>", '42')
 #    print p.compare("<int>", '42.1')
 #    print p.compare('1', '1')
