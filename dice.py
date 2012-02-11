@@ -32,63 +32,17 @@ from optparse import OptionParser
 from random import randint
 
 usage = "usage: %prog [OPTIONS] -d 'xDy'"
-version = "%prog Version 1.0.0\n\nCopyright (C) 2011 Alexander Gude - alex.public.account+Dice@gmail.com\nThis is free software.  You may redistribute copies of it under the terms of\nthe GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\nThere is NO WARRANTY, to the extent permitted by law.\n\nWritten by Alexander Gude."
+version = "%prog Version 2.0.0\n\nCopyright (C) 2012 Alexander Gude - alex.public.account+Dice@gmail.com\nThis is free software.  You may redistribute copies of it under the terms of\nthe GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\nThere is NO WARRANTY, to the extent permitted by law.\n\nWritten by Alexander Gude."
 parser = OptionParser(usage=usage,version=version)
 parser.add_option("-d", "--dice", action="store", type="string", dest="dice", help="the dice to be rolled, such as '4d6'")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
 
 (options, args) = parser.parse_args()
 
-class dice:
-    """
-
-    """
-    def __init__(self,imute):
-        """ Sets up the dice by parsing a string of its type: 3d5 """
-        self.imute = imute
-        self.lowest = 0 # Subtract n lowest dice
-        self.highest = 0 # Subtract n highest dice
-        self.addToTotal = 0 # Add this number to total roll
-        self.addToEach = 0 # Add this number to each die
-        self.number = 0 # Number of dice to roll
-        self.size = 0 # Size of each die
-        self.doSum = False # Sum dice by default.
-        self.__parse()
-
-    def __parse(self):
-        """ Parse a imute format string. """
-        self.__getLowestHighest()
-        #self.__getLowest()
-        #self.__getAddToTotal()
-        #self.__getAddToEach()
-        #self.__getNumber()
-        #self.__getSize()
-
-    def __getLowestHighest(self):
-        """ Parse "-nL-mH" and set lowest = n, highest = m """
-        if "L" in self.imute:
-            pass
-
-    def roll(self,doSum=None):
-        """ Roll the dice and print the result. """
-        if doSum == None:
-            doSum = self.doSum
-        values = []
-        for i in xrange(0,self.number):
-            values.append(randint(1,self.size))
-        values.sort()
-        values.reverse()
-        for i in xrange(0,self.lowest):
-            values.pop()
-        if dosum:
-            print sum(values)
-        else:
-            print values
-
 #Tokenizer
 class diceTokenizer:
     """ Returns a dice token """
-    def __init__(self,input):
+    def __init__(self, input):
         """ """
         self.input = input
         self.end = len(self.input)
@@ -127,17 +81,14 @@ class diceTokenizer:
                     buffer = ''
                 yield char
 
-
-# LL Parser
+#LL Parser
 class llParser:
     """ LL Parser """
-    def __init__(self, table, tokenizer, k=1):
+    def __init__(self, table, tokenizer):
         """ """
-        self.k = k
         self.table = table
         self.input = input
         self.stack = ['<START>']
-        self.transform = []
         self.tokenizer = tokenizer
         self.__loop()
 
@@ -148,9 +99,10 @@ class llParser:
             while keepStreamElement and self.stack:
                 stackElement = self.stack.pop()
                 result = self.table.compare(stackElement, streamElement)
-                print stackElement, streamElement, result
+                #print stackElement, streamElement, result
                 if result is True:
                     keepStreamElement = False
+                    self.table.sTable[stackElement] = streamElement
                     continue 
                 else:
                     self.table.pTable[stackElement](streamElement, self.stack)
@@ -165,15 +117,12 @@ class llParser:
                     continue
                 else:
                     self.table.pTable[stackElement](streamElement, self.stack)
-            else:
-                pass
+            # Need to add a state check to avoid infinite loop in fail case
 
-
-# Parsing table
-class Table:
+#LL Table
+class diceTable:
     """ """
     def __init__(self):
-
         self.cTable = {
                 "<START>": None,
                 "<die-type>": None,
@@ -182,15 +131,25 @@ class Table:
                 "<drop>": None,
                 "<int-die-num>": self.__isInt,
                 "<str-die-size>": self.__isStrDieSize,
-                "<str-drop-mod>": self.__isStrDropMod,
+                "<str-drop-mod>": None,
+                "<str-drop-high>": self.__isStrDropHigh,
+                "<str-drop-low>": self.__isStrDropLow,
                 }
-
         self.pTable = {
                 "<START>": self.__Start,
                 "<die-type>": self.__dieType,
                 "<drop>": self.__drop,
+                "<str-drop-mod>": self.__strDropMod,
                 "<local-mod>": self.__localMod,
                 "<global-mod>": self.__globalMod,
+                }
+        self.sTable = {
+                "<int-die-num>":None,
+                "<str-die-size>":None,
+                "<str-drop-high>":None,
+                "<str-drop-low>":None,
+                "<global-mod>":None,
+                "<local-mod>":None,
                 }
 
     def compare(self,a,b):
@@ -241,6 +200,20 @@ class Table:
         else:
             return False
 
+    def __strDropMod(self, s, stack):
+        """ Take action when stack status is <drop> """
+        if s[0] == '-':
+            if s[-1] in ['L','l']:
+                stack.append("<str-drop-low>")
+                return True
+            elif s[-1] in ['H','h']:
+                stack.append("<str-drop-high>")
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def __localMod(self, s, stack):
         """ Take action when stack status is <local-mod> """
         if s == '':
@@ -272,11 +245,11 @@ class Table:
         else:
             return True
 
-    def __isStrDropMod(self,s):
-        """ Check if s matches <str-drop-mod> """
+    def __isStrDropLow(self,s,chars=['L','l']):
+        """ Check if s matches <str-drop-low> """
         try:
-            assert s[0] == '-'
-            assert s[-1] in ['L','l','H','h']
+            assert s[0] == '-' 
+            assert s[-1] in chars
             mid = s[1:-1]
             if mid != '':
                 int(mid)
@@ -286,6 +259,10 @@ class Table:
             return False
         else:
             return True
+
+    def __isStrDropHigh(self,s):
+        """ Check if s matches <str-drop-high> """
+        return self.__isStrDropLow(s,chars=['H','h'])
 
     def __isLocalMod(self,s):
         """ Check if s matches <local-mod> """
@@ -323,39 +300,150 @@ BNF = """
 <str-drop-mod> ::= <str-drop-high> | <str-drop-low>
 """
 
+#Dice
+class dice:
+    """
+
+    """
+    def __init__(self, diceStr, parser=llParser, tokenizer=diceTokenizer, table=diceTable):
+        """ Sets up the dice by parsing a string of its type: 3d5 """
+        self.diceStr = diceStr
+        self.table = diceTable()
+        self.tokenizer = diceTokenizer(self.diceStr)
+        self.parser = llParser(self.table, self.tokenizer)
+        self.sTable = self.table.sTable
+        self.__parse()
+
+    def __parse(self):
+        """ Parse a imute format string. """
+        self.__getNumber()
+        self.__getSize()
+        self.__getLocalMod()
+        self.__getGlobalMod()
+        self.__getHighestMod()
+        self.__getLowestMod()
+        self.__getDoSum()
+
+    def __getDoSum(self):
+        """ Set self.doSum """
+        if self.__globalMod:
+            self.__doSum = True
+
+    def __getNumber(self):
+        """ Set self.number """
+        self.number = 0
+        self.number = int(self.sTable["<int-die-num>"])
+
+    def __getSize(self):
+        """ Set self.size """
+        self.size = 0
+        self.size = int(self.sTable["<str-die-size>"][1:])
+
+    def __getDieMod(self, modStr):
+        """ Get general die mod """
+        try:
+            mod = self.sTable[modStr]
+        except KeyError:
+            return 0
+        if mod is None:
+            return 0
+        else:
+            return int(mod)
+
+    def __getLocalMod(self):
+        """ Set self.localMod """
+        self.localMod = self.__getDieMod("<local-mod>")
+
+    def __getGlobalMod(self):
+        """ Set self.globalMod """
+        self.globalMod = self.__getDieMod("<global-mod>")
+
+    def __getDropMod(self, modStr):
+        """ Get geneal drop mod """
+        mod = self.sTable[modStr]
+        if mod is None:
+            return 0
+        else:
+            mod = mod[1:] # Drop -
+            mod = mod.rstrip('HhLl')
+            if mod:
+                return int(mod)
+            else:
+                return 1
+        
+    def __getHighestMod(self):
+        """ Set self.highestMod """
+        self.highestMod = self.__getDropMod("<str-drop-high>")
+
+    def __getLowestMod(self):
+        """ Set self.highestMod """
+        self.lowestMod = self.__getDropMod("<str-drop-low>")
+
+    def roll(self,doSum=None):
+        """ Roll the dice and print the result. """
+        if doSum == None:
+            doSum = self.doSum
+        values = []
+        for i in xrange(0,self.number):
+            values.append(randint(1,self.size))
+        values.sort()
+        values.reverse()
+        for i in xrange(0,self.lowest):
+            values.pop()
+        if dosum:
+            print sum(values)
+        else:
+            print values
+
 # Test Function
-def testClass(toTest, inStr, number=0, size=0, addToTotal=0, addToEach=0, lowest=0, highest=0):
+def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMod=0, highestMod=0):
     t = toTest(inStr)
     try:
         assert t.number == number
-        assert t.size == size
-        assert t.addToTotal == addToTotal
-        assert t.addToEach == addToEach
-        assert t.lowest == lowest
-        assert t.highest == highest
     except AssertionError:
-        print "Fail %s"%(inStr)
+        print "Fail %s: %s = %i"%(inStr,"number",t.number)
+        print t.sTable
     else:
-        print "Pass %s"%(inStr)
+        try:
+            assert t.size == size
+        except AssertionError:
+            print "Fail %s: %s = %i"%(inStr,"size",t.size)
+            print t.sTable
+        else:
+            try:
+                assert t.globalMod == globalMod
+            except AssertionError:
+                print "Fail %s: %s = %i"%(inStr,"globalMod",t.globalMod)
+                print t.globalMod,globalMod
+                print t.sTable
+            else:
+                try:
+                    assert t.localMod == localMod
+                except AssertionError:
+                    print "Fail %s: %s = %i"%(inStr,"localMod",t.localMod)
+                    print t.sTable
+                else:
+                    try:
+                        assert t.lowestMod == lowestMod
+                    except AssertionError:
+                        print "Fail %s: %s = %i"%(inStr,"lowestMod",t.lowestMod)
+                        print t.sTable
+                    else:
+                        try:
+                            assert t.highestMod == highestMod
+                        except AssertionError:
+                            print "Fail %s: %s = %i"%(inStr,"highestMod",t.highestMod)
+                            print t.sTable
+                        else:
+                            print "Pass %s"%(inStr)
 
 # Tests
 if __name__ == '__main__':
-#    testClass(dice, "0d0") # Always passes
-#    testClass(dice, "3d6", 3, 6)
-#    testClass(dice, "10d7+4", 10, 7, 4)
-#    testClass(dice, "8d12-3", 8, 12, -3)
-#    testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
-#    testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
-#    testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
-#    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
-
-    strings = ['0d0','3d6', "10d7+4", "8d12-3", "4d2-2L", "23d24-5H", "7(d20+1)-L-2H", "18(d15-12)-1-3H","5(d10-1)+15-3L-H"]
-    for string in strings:
-        d = diceTokenizer(string)
-        print "\n"+string
-        t = Table()
-        ll = llParser(t,d)
-#    print p.compare("<int>", '42')
-#    print p.compare("<int>", '42.1')
-#    print p.compare('1', '1')
-#    print p.compare('1', 'a')
+    testClass(dice, "0d0") # Always passes
+    testClass(dice, "3d6", 3, 6)
+    testClass(dice, "10d7+4", 10, 7, 4)
+    testClass(dice, "8d12-3", 8, 12, -3)
+    testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
+    testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
+    testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
+    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
