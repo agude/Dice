@@ -386,19 +386,18 @@ class dice:
         # If self.doSum, we must do the sum
         if self.doSum == True:
             doSum == True
+        #Generate numbers
         values = []
         for i in xrange(0,self.number):
             dieVal = randint(1,self.size) + self.localMod
-            max(dieVal,0) # Dice must roll at least 0 after mods
+            dieVal = max(dieVal,0) # Dice must roll at least 0 after mods
             values.append(dieVal)
+        #Remove Highest and Lowest dice
         values.sort()
-        # Remove Highest dice
-        for i in xrange(0, self.highestMod):
-            values.pop()
-        # Remove Lowest dice
-        values.reverse()
-        for i in xrange(0,self.lowestMod):
-            values.pop()
+        starti = self.lowestMod
+        endi = len(values) - self.highestMod
+        values = values[starti:endi]
+        #Return values
         if doSum:
             print sum(values) + self.globalMod
         else:
@@ -458,9 +457,9 @@ if __name__ == '__main__':
     #testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
 
     d = dice("4d6-L")
-    d.roll(True)
-    d.roll(True)
-    d.roll(True)
-    d.roll(True)
-    d.roll(True)
-    d.roll(True)
+    d.roll()
+    d.roll()
+    d.roll()
+    d.roll()
+    d.roll()
+    d.roll()
