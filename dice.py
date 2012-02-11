@@ -35,6 +35,7 @@ usage = "usage: %prog [OPTIONS] -d 'xDy'"
 version = "%prog Version 2.0.0\n\nCopyright (C) 2012 Alexander Gude - alex.public.account+Dice@gmail.com\nThis is free software.  You may redistribute copies of it under the terms of\nthe GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\nThere is NO WARRANTY, to the extent permitted by law.\n\nWritten by Alexander Gude."
 parser = OptionParser(usage=usage,version=version)
 parser.add_option("-d", "--dice", action="store", type="string", dest="dice", help="the dice to be rolled, such as '4d6'")
+parser.add_option("-s", "--sum", action="store_true", dest="sum", default=False, help="sum final result")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
 
 (options, args) = parser.parse_args()
@@ -456,10 +457,5 @@ if __name__ == '__main__':
     #testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
     #testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
 
-    d = dice("4d6-L")
-    d.roll()
-    d.roll()
-    d.roll()
-    d.roll()
-    d.roll()
-    d.roll()
+    d = dice(options.dice)
+    d.roll(options.sum)
