@@ -55,17 +55,6 @@ class dice:
         self.doSum = False # Sum dice by default.
         self.__parse()
 
-        #if 'L'  in self.type:
-        #    numL = (self.type.split('L')[0]).split('-')[-1]
-        #    if not numL:
-        #        self.lowest = 1
-        #    else:
-        #        self.lowest = int(numL)
-        #    self.type = '-'.join(self.type.split('-')[:-1])
-        #    print self.type
-        #self.number = int(self.type.split('d')[0])
-        #self.size = int(self.type.split('d')[1])
-
     def __parse(self):
         """ Parse a imute format string. """
         self.__getLowestHighest()
@@ -106,7 +95,7 @@ class diceTokenizer:
         self.ints = ['0','1','2','3','4','5','6','7','8','9']
         self.LH = ['L','l','H','h']
         self.symbols = ['+','-','d']
-    
+
     def __iter__(self):
         """ Allows iteration over self """
         return self.__makeIter()
@@ -154,13 +143,10 @@ class llParser:
 
     def __loop(self):
         """ Run while loop until self.stack is empty """
-        streamElement = ''
-
         for streamElement in self.tokenizer:
             keepStreamElement = True
             while keepStreamElement and self.stack:
                 stackElement = self.stack.pop()
-                comp = self.table.compare
                 result = self.table.compare(stackElement, streamElement)
                 print stackElement, streamElement, result
                 if result is True:
@@ -168,7 +154,6 @@ class llParser:
                     continue 
                 else:
                     self.table.pTable[stackElement](streamElement, self.stack)
-                print self.stack
         if self.stack:
             # Out of stream, but still have stack
             # We check to make sure the stack is isomorphic to ""
@@ -181,7 +166,7 @@ class llParser:
                 else:
                     self.table.pTable[stackElement](streamElement, self.stack)
             else:
-                print self.stack
+                pass
 
 
 # Parsing table
@@ -190,29 +175,29 @@ class Table:
     def __init__(self):
 
         self.cTable = {
-            "<START>": None,
-            "<die-type>": None,
-            "<local-mod>": self.__isLocalMod,
-            "<global-mod>": self.__isGlobalMod,
-            "<drop>": None,
-            "<int-die-num>": self.__isInt,
-            "<str-die-size>": self.__isStrDieSize,
-            "<str-drop-mod>": self.__isStrDropMod,
+                "<START>": None,
+                "<die-type>": None,
+                "<local-mod>": self.__isLocalMod,
+                "<global-mod>": self.__isGlobalMod,
+                "<drop>": None,
+                "<int-die-num>": self.__isInt,
+                "<str-die-size>": self.__isStrDieSize,
+                "<str-drop-mod>": self.__isStrDropMod,
                 }
-        
+
         self.pTable = {
                 "<START>": self.__Start,
                 "<die-type>": self.__dieType,
-                "<str-die-size>": self.__strDieSize,
                 "<drop>": self.__drop,
                 "<local-mod>": self.__localMod,
                 "<global-mod>": self.__globalMod,
                 }
 
     def compare(self,a,b):
-        """ Compare a,b using the compairison table """
+        """ Compare a,b using the compairison table. """
         if len(a) == 1:
-           return a == b 
+            # For '(', ')', and other single characters
+            return a == b 
         else:
             try:
                 compFunction = self.cTable[a]
@@ -239,20 +224,7 @@ class Table:
             stack.append("<str-die-size>")
             stack.append("(")
             return True
-        elif len(s) >= 2:
-            stack.append("<str-die-size>")
-        else:
-            return False
-
-    def __strDieSize(self, s, stack):
-        """ Take action when stack status is <die-type> """
-        if s == '(':
-            stack.append(")")
-            stack.append("<local-mod>")
-            stack.append("<str-die-size>")
-            stack.append("(")
-            return True
-        elif s.len() >= 2:
+        elif s[0] == 'd':
             stack.append("<str-die-size>")
         else:
             return False
@@ -260,6 +232,7 @@ class Table:
     def __drop(self, s, stack):
         """ Take action when stack status is <drop> """
         if s == '':
+            # Drop can be blank
             return True
         elif s[-1] in ['L','l','H','h']:
             stack.append("<drop>")
@@ -271,6 +244,11 @@ class Table:
     def __localMod(self, s, stack):
         """ Take action when stack status is <local-mod> """
         if s == '':
+            # Local mod can be blank
+            return True
+        elif s[-1] in ['L','l','H','h']:
+            # There is no local/global mod
+            # We are already at the drop condition
             return True
         elif s[0] in ['-','+']:
             stack.append("<str-local-mod>")
@@ -287,9 +265,12 @@ class Table:
         try:
             assert s[0] == 'd'
             int(s[1:])
-            return True
-        except AssertionError, ValueError:
+        except AssertionError:
             return False
+        except ValueError:
+            return False
+        else:
+            return True
 
     def __isStrDropMod(self,s):
         """ Check if s matches <str-drop-mod> """
@@ -299,9 +280,12 @@ class Table:
             mid = s[1:-1]
             if mid != '':
                 int(mid)
-            return True
-        except AssertionError, ValueError:
+        except AssertionError:
             return False
+        except ValueError:
+            return False
+        else:
+            return True
 
     def __isLocalMod(self,s):
         """ Check if s matches <local-mod> """
@@ -311,12 +295,13 @@ class Table:
             try:
                 assert s[0] in ['-','+']
                 int(s[1:])
-                return True
             except AssertionError:
                 return False
             except ValueError:
                 return False
-    
+            else:
+                return True
+
     def __isGlobalMod(self,s):
         """ Check if s matches <global-mod> """
         return self.__isLocalMod(s)
@@ -364,7 +349,7 @@ if __name__ == '__main__':
 #    testClass(dice, "7(d20+1)-L-2H", 4, 20, 0, 1, 1, 2)
 #    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 0, -1, 3, 1)
 
-    strings = ['0d0','3d6', "10d7+4", "8d12-3", "4d2-2L", "23d24-5H", "7(d20+1)-L-2H", "5(d10-1)+15-3L-H"]
+    strings = ['0d0','3d6', "10d7+4", "8d12-3", "4d2-2L", "23d24-5H", "7(d20+1)-L-2H", "18(d15-12)-1-3H","5(d10-1)+15-3L-H"]
     for string in strings:
         d = diceTokenizer(string)
         print "\n"+string
