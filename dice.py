@@ -326,8 +326,10 @@ class dice:
 
     def __getDoSum(self):
         """ Set self.doSum """
-        if self.__globalMod:
-            self.__doSum = True
+        if self.globalMod:
+            self.doSum = True
+        else:
+            self.doSum = False
 
     def __getNumber(self):
         """ Set self.number """
@@ -381,17 +383,24 @@ class dice:
 
     def roll(self,doSum=None):
         """ Roll the dice and print the result. """
-        if doSum == None:
-            doSum = self.doSum
+        # If self.doSum, we must do the sum
+        if self.doSum == True:
+            doSum == True
         values = []
         for i in xrange(0,self.number):
-            values.append(randint(1,self.size))
+            dieVal = randint(1,self.size) + self.localMod
+            max(dieVal,0) # Dice must roll at least 0 after mods
+            values.append(dieVal)
         values.sort()
-        values.reverse()
-        for i in xrange(0,self.lowest):
+        # Remove Highest dice
+        for i in xrange(0, self.highestMod):
             values.pop()
-        if dosum:
-            print sum(values)
+        # Remove Lowest dice
+        values.reverse()
+        for i in xrange(0,self.lowestMod):
+            values.pop()
+        if doSum:
+            print sum(values) + self.globalMod
         else:
             print values
 
@@ -439,11 +448,19 @@ def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMo
 
 # Tests
 if __name__ == '__main__':
-    testClass(dice, "0d0") # Always passes
-    testClass(dice, "3d6", 3, 6)
-    testClass(dice, "10d7+4", 10, 7, 4)
-    testClass(dice, "8d12-3", 8, 12, -3)
-    testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
-    testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
-    testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
-    testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
+    #testClass(dice, "0d0") # Always passes
+    #testClass(dice, "3d6", 3, 6)
+    #testClass(dice, "10d7+4", 10, 7, 4)
+    #testClass(dice, "8d12-3", 8, 12, -3)
+    #testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
+    #testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
+    #testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
+    #testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
+
+    d = dice("4d6-L")
+    d.roll(True)
+    d.roll(True)
+    d.roll(True)
+    d.roll(True)
+    d.roll(True)
+    d.roll(True)
