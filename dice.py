@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #  Copyright (C) 2009  Alexander Gude - alex.public.account+DiceRoller@gmail.com
 #
 #  This program is free software; you can redistribute it and/or modify
@@ -58,7 +58,7 @@ class diceTokenizer:
     def __makeIter(self):
         """ Return next item in iterization """
         buffer = ''
-        for i in xrange(self.end):
+        for i in range(self.end):
             char = self.input[i]
             if i == self.end-1 and char in (self.ints+self.LH):
                 # End of stream, yield all
@@ -389,7 +389,7 @@ class dice:
             doSum == True
         #Generate numbers
         values = []
-        for i in xrange(0,self.number):
+        for i in range(0,self.number):
             dieVal = randint(1,self.size) + self.localMod
             dieVal = max(dieVal,0) # Dice must roll at least 0 after mods
             values.append(dieVal)
@@ -400,9 +400,9 @@ class dice:
         values = values[starti:endi]
         #Return values
         if doSum:
-            print sum(values) + self.globalMod
+            print(sum(values) + self.globalMod)
         else:
-            print values
+            print(values)
 
 # Test Function
 def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMod=0, highestMod=0):
@@ -410,41 +410,41 @@ def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMo
     try:
         assert t.number == number
     except AssertionError:
-        print "Fail %s: %s = %i"%(inStr,"number",t.number)
-        print t.sTable
+        print("Fail %s: %s = %i"%(inStr,"number",t.number))
+        print(t.sTable)
     else:
         try:
             assert t.size == size
         except AssertionError:
-            print "Fail %s: %s = %i"%(inStr,"size",t.size)
-            print t.sTable
+            print("Fail %s: %s = %i"%(inStr,"size",t.size))
+            print(t.sTable)
         else:
             try:
                 assert t.globalMod == globalMod
             except AssertionError:
-                print "Fail %s: %s = %i"%(inStr,"globalMod",t.globalMod)
-                print t.globalMod,globalMod
-                print t.sTable
+                print("Fail %s: %s = %i"%(inStr,"globalMod",t.globalMod))
+                print(t.globalMod,globalMod)
+                print(t.sTable)
             else:
                 try:
                     assert t.localMod == localMod
                 except AssertionError:
-                    print "Fail %s: %s = %i"%(inStr,"localMod",t.localMod)
-                    print t.sTable
+                    print("Fail %s: %s = %i"%(inStr,"localMod",t.localMod))
+                    print(t.sTable)
                 else:
                     try:
                         assert t.lowestMod == lowestMod
                     except AssertionError:
-                        print "Fail %s: %s = %i"%(inStr,"lowestMod",t.lowestMod)
-                        print t.sTable
+                        print("Fail %s: %s = %i"%(inStr,"lowestMod",t.lowestMod))
+                        print(t.sTable)
                     else:
                         try:
                             assert t.highestMod == highestMod
                         except AssertionError:
-                            print "Fail %s: %s = %i"%(inStr,"highestMod",t.highestMod)
-                            print t.sTable
+                            print("Fail %s: %s = %i"%(inStr,"highestMod",t.highestMod))
+                            print(t.sTable)
                         else:
-                            print "Pass %s"%(inStr)
+                            print("Pass %s"%(inStr))
 
 # Tests
 if __name__ == '__main__':
