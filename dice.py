@@ -17,7 +17,8 @@
 #  Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 #  The most recent version of this program is avaible at:
-#  Somewhere?
+#  https://github.com/agude/dice
+
 
 """
 Allows command line options to be parsed. Called first to in order to let
