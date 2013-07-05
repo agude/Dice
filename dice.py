@@ -17,7 +17,7 @@
 #  Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 #  The most recent version of this program is avaible at:
-#  https://github.com/agude/dice
+#  https://github.com/agude/Dice
 
 
 """
