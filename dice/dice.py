@@ -78,7 +78,6 @@ class llParser:
     def __init__(self, table, tokenizer):
         """ """
         self.table = table
-        self.input = input
         self.stack = ['<START>']
         self.tokenizer = tokenizer
         self.__loop()
@@ -156,8 +155,8 @@ class diceTable:
                 return None  # Should raise error
             if compFunction is None:
                 return None
-            else:
-                return compFunction(b)
+
+            return compFunction(b)
 
     def __Start(self, s, stack):
         """ Take action when stack status is <START> """
@@ -308,15 +307,15 @@ class Dice:
         self.number = int(self.sTable["<int-die-num>"])
         self.size = int(self.sTable["<str-die-size>"][1:])
 
-        self.local_mod = self.__getDieMod("<local-mod>")
-        self.global_mod = self.__getDieMod("<global-mod>")
-        self.highest_mod = self.__getDropMod("<str-drop-high>")
-        self.lowest_mod = self.__getDropMod("<str-drop-low>")
+        self.local_mod = self.__get_die_mod("<local-mod>")
+        self.global_mod = self.__get_die_mod("<global-mod>")
+        self.highest_mod = self.__get_drop_mod("<str-drop-high>")
+        self.lowest_mod = self.__get_drop_mod("<str-drop-low>")
 
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
 
-    def __getDieMod(self, modStr):
+    def __get_die_mod(self, modStr):
         """ Get general die mod """
         mod = self.sTable.get(modStr, None)
         if mod is None:
@@ -324,7 +323,7 @@ class Dice:
 
         return int(mod)
 
-    def __getDropMod(self, modStr):
+    def __get_drop_mod(self, modStr):
         """ Get geneal drop mod """
         mod = self.sTable[modStr]
 
@@ -379,7 +378,6 @@ def main():
     args = parser.parse_args()
 
     d = Dice(args.dice_notation)
-    print(args.sum)
     d.roll(args.sum)
 
 
