@@ -1,24 +1,4 @@
 #!/usr/bin/python3
-#  Copyright (C) 2013  Alexander Gude -
-#  alex.public.account+DiceRoller@gmail.com
-#
-#  This program is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation; either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-#
-#  The most recent version of this program is avaible at:
-#  https://github.com/agude/Dice
-
 
 """
 Allows command line options to be parsed. Called first to in order to let
@@ -27,15 +7,6 @@ functions use them.
 
 from optparse import OptionParser
 from random import randint
-
-usage = "usage: %prog [OPTIONS] -d 'xDy'"
-version = "%prog Version 2.0.0\n\nCopyright (C) 2013 Alexander Gude - alex.public.account+Dice@gmail.com\nThis is free software.  You may redistribute copies of it under the terms of\nthe GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\nThere is NO WARRANTY, to the extent permitted by law.\n\nWritten by Alexander Gude."
-parser = OptionParser(usage=usage, version=version)
-parser.add_option("-d", "--dice", action="store", type="string", dest="dice", help="the dice to be rolled, such as '4d6'")
-parser.add_option("-s", "--sum", action="store_true", dest="sum", default=False, help="sum final result")
-parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
-
-(options, args) = parser.parse_args()
 
 
 #Tokenizer
@@ -448,6 +419,20 @@ def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMo
                         else:
                             print("Pass %s" % (inStr))
 
+
+def main():
+    usage = "usage: %prog [OPTIONS] -d 'xDy'"
+    version = "%prog Version 1.0.0\n\nCopyright (C) 2018 Alexander Gude - alex.public.account+Dice@gmail.com"
+    parser = OptionParser(usage=usage, version=version)
+    parser.add_option("-d", "--dice", action="store", type="string", dest="dice", help="the dice to be rolled, such as '4d6'")
+    parser.add_option("-s", "--sum", action="store_true", dest="sum", default=False, help="sum final result")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
+
+    (options, args) = parser.parse_args()
+
+    d = dice(options.dice)
+    d.roll(options.sum)
+
 # Tests
 if __name__ == '__main__':
     #testClass(dice, "0d0") # Always passes
@@ -458,6 +443,4 @@ if __name__ == '__main__':
     #testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
     #testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
     #testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
-
-    d = dice(options.dice)
-    d.roll(options.sum)
+    main()
