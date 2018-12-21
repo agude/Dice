@@ -274,7 +274,7 @@ BNF = """
 
 
 #Dice
-class dice:
+class Dice:
     """
 
     """
@@ -372,52 +372,11 @@ class dice:
         values = values[starti:endi]
         #Return values
         if doSum:
-            print(sum(values) + self.globalMod)
+            output = sum(values) + self.globalMod
         else:
-            print(values)
-
-
-# Test Function
-def testClass(toTest, inStr, number=0, size=0, globalMod=0, localMod=0, lowestMod=0, highestMod=0):
-    t = toTest(inStr)
-    try:
-        assert t.number == number
-    except AssertionError:
-        print("Fail %s: %s = %i" % (inStr, "number", t.number))
-        print(t.sTable)
-    else:
-        try:
-            assert t.size == size
-        except AssertionError:
-            print("Fail %s: %s = %i" % (inStr, "size", t.size))
-            print(t.sTable)
-        else:
-            try:
-                assert t.globalMod == globalMod
-            except AssertionError:
-                print("Fail %s: %s = %i" % (inStr, "globalMod", t.globalMod))
-                print(t.globalMod, globalMod)
-                print(t.sTable)
-            else:
-                try:
-                    assert t.localMod == localMod
-                except AssertionError:
-                    print("Fail %s: %s = %i" % (inStr, "localMod", t.localMod))
-                    print(t.sTable)
-                else:
-                    try:
-                        assert t.lowestMod == lowestMod
-                    except AssertionError:
-                        print("Fail %s: %s = %i" % (inStr, "lowestMod", t.lowestMod))
-                        print(t.sTable)
-                    else:
-                        try:
-                            assert t.highestMod == highestMod
-                        except AssertionError:
-                            print("Fail %s: %s = %i" % (inStr, "highestMod", t.highestMod))
-                            print(t.sTable)
-                        else:
-                            print("Pass %s" % (inStr))
+            output = values
+        print(output)
+        return output
 
 
 def main():
@@ -430,17 +389,9 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    d = dice(options.dice)
+    d = Dice(options.dice)
     d.roll(options.sum)
 
-# Tests
+
 if __name__ == '__main__':
-    #testClass(dice, "0d0") # Always passes
-    #testClass(dice, "3d6", 3, 6)
-    #testClass(dice, "10d7+4", 10, 7, 4)
-    #testClass(dice, "8d12-3", 8, 12, -3)
-    #testClass(dice, "4d2-2L", 4, 2, 0, 0, 2)
-    #testClass(dice, "23d24-5H", 23, 24, 0, 0, 0, 5)
-    #testClass(dice, "7(d20+1)-L-2H", 7, 20, 0, 1, 1, 2)
-    #testClass(dice, "5(d10-1)+15-3L-H", 5, 10, 15, -1, 3, 1)
     main()
