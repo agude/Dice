@@ -19,6 +19,7 @@ class DiceTokenizer:
 
         # The three types of charactesr we encounter in a dice format string
         self.INT_CHARS = frozenset(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+        self.FATE_CHARS = frozenset(['F'])
         self.LH_CHARS = frozenset(['L', 'l', 'H', 'h'])
         self.SYMBOL_CHARS = frozenset(['+', '-', 'd'])
         self.PARENS = frozenset(['(', ')'])
@@ -34,7 +35,7 @@ class DiceTokenizer:
             char = self.input[i]
 
             # End of stream check, where we yield all remaining
-            if i == self.end - 1 and char in self.INT_CHARS.union(self.LH_CHARS):
+            if i == self.end - 1 and char in self.INT_CHARS.union(self.LH_CHARS).union(self.FATE_CHARS):
                 yield buffer + char
 
             # Handle symbols
@@ -49,7 +50,7 @@ class DiceTokenizer:
                     buffer = char
 
             # Handle numbers and H/L mods
-            elif char in self.INT_CHARS.union(self.LH_CHARS):
+            elif char in self.INT_CHARS.union(self.LH_CHARS).union(self.FATE_CHARS):
                 #Add numbers, or L/H to the buffer
                 buffer += char
 
@@ -226,15 +227,15 @@ class diceTable:
 
     def __isStrDieSize(self, s):
         """ Check if s matches <str-die-size> """
-        try:
-            assert s[0] == 'd'
-            int(s[1:])
-        except AssertionError:
+        # Must have a "d" as the first part of the token
+        if not s[0] == 'd':
             return False
-        except ValueError:
+        # Must then be followed by an integer or an F for fate dice
+        is_int = s[1:].isdigit()
+        if not is_int and s[1] != 'F':
             return False
-        else:
-            return True
+
+        return True
 
     def __isStrDropLow(self, s, chars=['L', 'l']):
         """ Check if s matches <str-drop-low> """
@@ -305,7 +306,11 @@ class Dice:
         self.sTable = self.table.sTable
 
         self.number = int(self.sTable["<int-die-num>"])
-        self.size = int(self.sTable["<str-die-size>"][1:])
+        die_size = self.sTable["<str-die-size>"][1:]
+        if die_size == "F":
+            self.size = die_size
+        else:
+            self.size = int(die_size)
 
         self.local_mod = self.__get_die_mod("<local-mod>")
         self.global_mod = self.__get_die_mod("<global-mod>")
@@ -346,8 +351,13 @@ class Dice:
         # Generate rolls
         values = []
         for _ in range(0, self.number):
-            die_val = randint(1, self.size) + self.local_mod
-            die_val = max(die_val, 0)  # Dice must roll at least 0 after mods
+            # Fate Dice use F, and have sides (-1, 0, 1)
+            if self.size == "F":
+                die_val = randint(-1, 1) + self.local_mod
+            else:
+                die_val = randint(1, self.size) + self.local_mod
+                die_val = max(die_val, 0)  # Dice must roll at least 0 after mods
+
             values.append(die_val)
 
         # Remove highest and lowest dice
@@ -372,8 +382,8 @@ def main():
         prog="Dice",
         description="A very complicated way of rolling dice.",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
-    parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 3.1.0")
+    parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
     args = parser.parse_args()
 
