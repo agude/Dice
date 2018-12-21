@@ -66,6 +66,11 @@ class DiceTokenizer:
                     buffer = ''
                 yield char
 
+            # Something illegal!
+            else:
+                err = "Illegal character '{}' found in dice format string!".format(char)
+                raise ValueError(err)
+
 
 #LL Parser
 class llParser:
