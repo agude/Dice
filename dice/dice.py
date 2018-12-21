@@ -5,7 +5,7 @@ Allows command line options to be parsed. Called first to in order to let
 functions use them.
 """
 
-from optparse import OptionParser
+import argparse
 from random import randint
 
 
@@ -342,7 +342,7 @@ class Dice:
         # No number, so modifier is 1
         return 1
 
-    def roll(self, doSum=None):
+    def roll(self, do_sum=False):
         """ Roll the dice and print the result. """
         # Generate rolls
         values = []
@@ -358,7 +358,7 @@ class Dice:
         values = sorted(values)[start_i:end_i]
 
         #Return values
-        if self.do_sum:
+        if self.do_sum or do_sum:
             output = sum(values) + self.global_mod
         else:
             output = values
@@ -368,17 +368,19 @@ class Dice:
 
 
 def main():
-    usage = "usage: %prog [OPTIONS] -d 'xDy'"
-    version = "%prog Version 1.0.0\n\nCopyright (C) 2018 Alexander Gude - alex.public.account+Dice@gmail.com"
-    parser = OptionParser(usage=usage, version=version)
-    parser.add_option("-d", "--dice", action="store", type="string", dest="dice", help="the dice to be rolled, such as '4d6'")
-    parser.add_option("-s", "--sum", action="store_true", dest="sum", default=False, help="sum final result")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
+    # Command line parsing
+    parser = argparse.ArgumentParser(
+        prog="Dice",
+        description="A very complicated way of rolling dice.",
+    )
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
+    parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll")
+    parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
+    args = parser.parse_args()
 
-    (options, args) = parser.parse_args()
-
-    d = Dice(options.dice)
-    d.roll(options.sum)
+    d = Dice(args.dice_notation)
+    print(args.sum)
+    d.roll(args.sum)
 
 
 if __name__ == '__main__':
