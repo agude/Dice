@@ -10,30 +10,36 @@ from random import randint
 
 
 #Tokenizer
-class diceTokenizer:
+class DiceTokenizer:
     """ Returns a dice token """
     def __init__(self, input):
         """ """
         self.input = input
         self.end = len(self.input)
-        self.ints = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-        self.LH = ['L', 'l', 'H', 'h']
-        self.symbols = ['+', '-', 'd']
+
+        # The three types of charactesr we encounter in a dice format string
+        self.INT_CHARS = frozenset(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+        self.LH_CHARS = frozenset(['L', 'l', 'H', 'h'])
+        self.SYMBOL_CHARS = frozenset(['+', '-', 'd'])
+        self.PARENS = frozenset(['(', ')'])
 
     def __iter__(self):
         """ Allows iteration over self """
-        return self.__makeIter()
+        return self.__make_iter()
 
-    def __makeIter(self):
+    def __make_iter(self):
         """ Return next item in iterization """
         buffer = ''
         for i in range(self.end):
             char = self.input[i]
-            if i == self.end - 1 and char in (self.ints + self.LH):
-                # End of stream, yield all
+
+            # End of stream check, where we yield all remaining
+            if i == self.end - 1 and char in self.INT_CHARS.union(self.LH_CHARS):
                 yield buffer + char
-            elif (char in self.symbols):
-                if (buffer == ''):
+
+            # Handle symbols
+            elif char in self.SYMBOL_CHARS:
+                if not buffer:
                     # If buffer is empty we add +, -, d as the first
                     buffer += char
                 else:
@@ -41,11 +47,20 @@ class diceTokenizer:
                     # and start a new one to avoid "-3-"
                     yield buffer
                     buffer = char
-            elif (char in self.ints + self.LH):
+
+            # Handle numbers and H/L mods
+            elif char in self.INT_CHARS.union(self.LH_CHARS):
                 #Add numbers, or L/H to the buffer
                 buffer += char
-            else:
-                # Some other character, yield the buffer, and restart
+
+            # Handle parenthesis.
+            #
+            # First yield the buffer if it has items, then reset the buffer,
+            # then yield the character.
+            #
+            # This will result in two items in some cases, like "d6" followed
+            # by ")". This is why we yield twice, and not add them together.
+            elif char in self.PARENS:
                 if buffer:
                     yield buffer
                     buffer = ''
@@ -277,11 +292,11 @@ BNF = """
 class Dice:
     """ A class to roll dice based on a dice format string. """
 
-    def __init__(self, dice_str, parser=llParser, tokenizer=diceTokenizer, table=diceTable):
+    def __init__(self, dice_str, parser=llParser, tokenizer=DiceTokenizer, table=diceTable):
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.dice_str = dice_str
         self.table = diceTable()
-        self.tokenizer = diceTokenizer(self.dice_str)
+        self.tokenizer = DiceTokenizer(self.dice_str)
         self.parser = parser(self.table, self.tokenizer)
         self.sTable = self.table.sTable
 
