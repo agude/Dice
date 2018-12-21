@@ -275,106 +275,74 @@ BNF = """
 
 #Dice
 class Dice:
-    """
+    """ A class to roll dice based on a dice format string. """
 
-    """
-    def __init__(self, diceStr, parser=llParser, tokenizer=diceTokenizer, table=diceTable):
+    def __init__(self, dice_str, parser=llParser, tokenizer=diceTokenizer, table=diceTable):
         """ Sets up the dice by parsing a string of its type: 3d5 """
-        self.diceStr = diceStr
+        self.dice_str = dice_str
         self.table = diceTable()
-        self.tokenizer = diceTokenizer(self.diceStr)
-        self.parser = llParser(self.table, self.tokenizer)
+        self.tokenizer = diceTokenizer(self.dice_str)
+        self.parser = parser(self.table, self.tokenizer)
         self.sTable = self.table.sTable
-        self.__parse()
 
-    def __parse(self):
-        """ Parse a imute format string. """
-        self.__getNumber()
-        self.__getSize()
-        self.__getLocalMod()
-        self.__getGlobalMod()
-        self.__getHighestMod()
-        self.__getLowestMod()
-        self.__getDoSum()
-
-    def __getDoSum(self):
-        """ Set self.doSum """
-        if self.globalMod:
-            self.doSum = True
-        else:
-            self.doSum = False
-
-    def __getNumber(self):
-        """ Set self.number """
-        self.number = 0
         self.number = int(self.sTable["<int-die-num>"])
-
-    def __getSize(self):
-        """ Set self.size """
-        self.size = 0
         self.size = int(self.sTable["<str-die-size>"][1:])
+
+        self.local_mod = self.__getDieMod("<local-mod>")
+        self.global_mod = self.__getDieMod("<global-mod>")
+        self.highest_mod = self.__getDropMod("<str-drop-high>")
+        self.lowest_mod = self.__getDropMod("<str-drop-low>")
+
+        # If we have a global mod, we must sum all the dice to apply it
+        self.do_sum = bool(self.global_mod)
 
     def __getDieMod(self, modStr):
         """ Get general die mod """
-        try:
-            mod = self.sTable[modStr]
-        except KeyError:
-            return 0
+        mod = self.sTable.get(modStr, None)
         if mod is None:
             return 0
-        else:
-            return int(mod)
 
-    def __getLocalMod(self):
-        """ Set self.localMod """
-        self.localMod = self.__getDieMod("<local-mod>")
-
-    def __getGlobalMod(self):
-        """ Set self.globalMod """
-        self.globalMod = self.__getDieMod("<global-mod>")
+        return int(mod)
 
     def __getDropMod(self, modStr):
         """ Get geneal drop mod """
         mod = self.sTable[modStr]
+
+        # No modifier
         if mod is None:
             return 0
-        else:
-            mod = mod[1:]  # Drop -
-            mod = mod.rstrip('HhLl')
-            if mod:
-                return int(mod)
-            else:
-                return 1
 
-    def __getHighestMod(self):
-        """ Set self.highestMod """
-        self.highestMod = self.__getDropMod("<str-drop-high>")
+        # See if the modifier is just a switch like -H,
+        # or has a number like -2H
+        mod = mod[1:]  # Drop -
+        mod = mod.rstrip('HhLl')
+        if mod:
+            return int(mod)
 
-    def __getLowestMod(self):
-        """ Set self.highestMod """
-        self.lowestMod = self.__getDropMod("<str-drop-low>")
+        # No number, so modifier is 1
+        return 1
 
     def roll(self, doSum=None):
         """ Roll the dice and print the result. """
-        # If self.doSum, we must do the sum
-        if self.doSum == True:
-            doSum == True
-        #Generate numbers
+        # Generate rolls
         values = []
-        for i in range(0, self.number):
-            dieVal = randint(1, self.size) + self.localMod
-            dieVal = max(dieVal, 0)  # Dice must roll at least 0 after mods
-            values.append(dieVal)
-        #Remove Highest and Lowest dice
-        values.sort()
-        starti = self.lowestMod
-        endi = len(values) - self.highestMod
-        values = values[starti:endi]
+        for _ in range(0, self.number):
+            die_val = randint(1, self.size) + self.local_mod
+            die_val = max(die_val, 0)  # Dice must roll at least 0 after mods
+            values.append(die_val)
+
+        # Remove highest and lowest dice
+        start_i = self.lowest_mod
+        end_i = len(values) - self.highest_mod
+
+        values = sorted(values)[start_i:end_i]
+
         #Return values
-        if doSum:
-            output = sum(values) + self.globalMod
+        if self.do_sum:
+            output = sum(values) + self.global_mod
         else:
             output = values
+
         print(output)
         return output
 

@@ -77,7 +77,7 @@ def test_dice_globalmod():
 
     for dice_str, answer in TEST_PAIRS:
         d = Dice(dice_str)
-        assert d.globalMod == answer
+        assert d.global_mod == answer
 
 
 def test_dice_localmod():
@@ -98,7 +98,7 @@ def test_dice_localmod():
 
     for dice_str, answer in TEST_PAIRS:
         d = Dice(dice_str)
-        assert d.localMod == answer
+        assert d.local_mod == answer
 
 
 def test_dice_lowestmod():
@@ -119,7 +119,7 @@ def test_dice_lowestmod():
 
     for dice_str, answer in TEST_PAIRS:
         d = Dice(dice_str)
-        assert d.lowestMod == answer
+        assert d.lowest_mod == answer
 
 
 def test_dice_highestmod():
@@ -140,4 +140,4 @@ def test_dice_highestmod():
 
     for dice_str, answer in TEST_PAIRS:
         d = Dice(dice_str)
-        assert d.highestMod == answer
+        assert d.highest_mod == answer
