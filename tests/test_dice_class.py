@@ -3,20 +3,6 @@ import pytest
 from dice.dice import Dice
 
 
-def test_dice_rolls():
-    dice = Dice("1d6")
-    # Make sure our rolls are as we expect
-    for _ in range(100):
-        assert 1 <= dice.roll()[0] <= 6
-
-
-def test_drop_high_low():
-    dice = Dice("3d6-L-H")
-    # Make sure our rolls are as we expect
-    for _ in range(100):
-        assert len(dice.roll()) == 1
-
-
 def test_dice_number():
     TEST_PAIRS = (
         ("0d0", 0),
