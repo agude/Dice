@@ -324,8 +324,11 @@ class Dice:
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
 
-        # Error checking
-        #
+        # Error checking to make sure the above values lead to valid
+        # combinations of dice.
+        self.__do_error_checking()
+
+    def __do_error_checking(self):
         # If we are rolling 0 (or fewer) dice
         if self.number < 1:
             err = "Number of dice {} is less than 1.".format(self.number)
