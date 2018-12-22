@@ -118,14 +118,14 @@ class diceTable:
         self.cTable = {
                 "<START>": None,
                 "<die-type>": None,
-                "<local-mod>": self.__isLocalMod,
-                "<global-mod>": self.__isGlobalMod,
+                "<local-mod>": self.__is_local_mod,
+                "<global-mod>": self.__is_global_mod,
                 "<drop>": None,
                 "<int-die-num>": self.__isInt,
                 "<str-die-size>": self.__isStrDieSize,
                 "<str-drop-mod>": None,
-                "<str-drop-high>": self.__isStrDropHigh,
-                "<str-drop-low>": self.__isStrDropLow,
+                "<str-drop-high>": self.__is_str_drop_high,
+                "<str-drop-low>": self.__is_str_drop_low,
                 }
         self.pTable = {
                 "<START>": self.__Start,
@@ -237,7 +237,7 @@ class diceTable:
 
         return True
 
-    def __isStrDropMod(self, s, chars):
+    def __is_str_drop_mod(self, s, chars):
         """ Check if s matches <str-drop-low> """
         # A drop mod has three pieces:
         #
@@ -251,32 +251,33 @@ class diceTable:
 
         return has_minus and has_char and ok_mid
 
-    def __isStrDropLow(self, s):
+    def __is_str_drop_low(self, s):
         """ Check if s matches <str-drop-low> """
-        return self.__isStrDropMod(s, chars=['L', 'l'])
+        return self.__is_str_drop_mod(s, chars=['L', 'l'])
 
-    def __isStrDropHigh(self, s):
+    def __is_str_drop_high(self, s):
         """ Check if s matches <str-drop-high> """
-        return self.__isStrDropMod(s, chars=['H', 'h'])
+        return self.__is_str_drop_mod(s, chars=['H', 'h'])
 
-    def __isLocalMod(self, s):
+    def __is_local_mod(self, s):
         """ Check if s matches <local-mod> """
+        # A local mod is allowed to be empty
         if s == '':
             return True
-        else:
-            try:
-                assert s[0] in ['-', '+']
-                int(s[1:])
-            except AssertionError:
-                return False
-            except ValueError:
-                return False
-            else:
-                return True
+        # Otherwise it must look like a sign and an integer
+        has_sign = s[0] in ['-', '+']
+        has_int = s[1:].isdigit()
 
-    def __isGlobalMod(self, s):
+        if has_sign and has_int:
+            return True
+
+        return False
+
+    def __is_global_mod(self, s):
         """ Check if s matches <global-mod> """
-        return self.__isLocalMod(s)
+        # A global mod has the exact same form as a local mod, so we can reuse
+        # the check.
+        return self.__is_local_mod(s)
 
     def __isInt(self, s):
         """ Check if s is an integer """
@@ -385,7 +386,7 @@ def main():
         prog="Dice",
         description="A very complicated way of rolling dice.",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 3.1.0")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 3.1.2")
     parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
     args = parser.parse_args()
