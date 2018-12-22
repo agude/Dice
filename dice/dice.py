@@ -332,6 +332,7 @@ class Dice:
         # If we are rolling 0 (or fewer) dice
         if self.number < 1:
             err = "Number of dice {} is less than 1.".format(self.number)
+            raise ValueError(err)
 
         # If the die size is less than 2, then there are no interesting results
         if self.size != "F" and self.size < 2:
