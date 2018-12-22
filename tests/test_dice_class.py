@@ -5,7 +5,6 @@ from dice.dice import Dice
 
 def test_dice_number():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 3),
         ("4dF", 4),
         ("10d7+4", 10),
@@ -28,7 +27,6 @@ def test_dice_number():
 
 def test_dice_size():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 6),
         ("4dF", "F"),
         ("10d7+4", 7),
@@ -51,7 +49,6 @@ def test_dice_size():
 
 def test_dice_globalmod():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 0),
         ("4dF", 0),
         ("10d7+4", 4),
@@ -74,7 +71,6 @@ def test_dice_globalmod():
 
 def test_dice_localmod():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 0),
         ("4dF", 0),
         ("10d7+4", 0),
@@ -97,7 +93,6 @@ def test_dice_localmod():
 
 def test_dice_lowestmod():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 0),
         ("4dF", 0),
         ("10d7+4", 0),
@@ -120,7 +115,6 @@ def test_dice_lowestmod():
 
 def test_dice_highestmod():
     TEST_PAIRS = (
-        ("0d0", 0),
         ("3d6", 0),
         ("4dF", 0),
         ("10d7+4", 0),
@@ -139,3 +133,45 @@ def test_dice_highestmod():
     for dice_str, answer in TEST_PAIRS:
         d = Dice(dice_str)
         assert d.highest_mod == answer
+
+
+def test_too_few_dice():
+    TEST = (
+        "0d0",
+        "0d1",
+        "0dF",
+    )
+    for dice_str in TEST:
+        with pytest.raises(ValueError):
+            Dice(dice_str)
+
+
+def test_too_small_die():
+    TEST = (
+        "0d0",
+        "3d1",
+    )
+    for dice_str in TEST:
+        with pytest.raises(ValueError):
+            Dice(dice_str)
+
+
+def test_too_many_drops():
+    TEST = (
+        "1d6-L",
+        "3d6-2L-2H",
+        "3dF-4H",
+    )
+    for dice_str in TEST:
+        with pytest.raises(ValueError):
+            Dice(dice_str)
+
+
+def test_too_large_local_mod():
+    TEST = (
+        "1(d6-7)",
+        "3(d2-2)-2H",
+    )
+    for dice_str in TEST:
+        with pytest.raises(ValueError):
+            Dice(dice_str)

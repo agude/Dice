@@ -324,6 +324,29 @@ class Dice:
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
 
+        # Error checking
+        #
+        # If we are rolling 0 (or fewer) dice
+        if self.number < 1:
+            err = "Number of dice {} is less than 1.".format(self.number)
+
+        # If the die size is less than 2, then there are no interesting results
+        if self.size != "F" and self.size < 2:
+            err = "Die size of {} is less than 2.".format(self.size)
+            raise ValueError(err)
+
+        # If we have zero (or fewer) dice left after dropping
+        if self.highest_mod + self.lowest_mod >= self.number:
+            dropped = self.highest_mod + self.local_mod
+            err = "{} dice dropped, but only {} dice used.".format(dropped, self.number)
+            raise ValueError(err)
+
+        # If the local mod is too large, all rolls will be 0
+        # (but Fate dice are allowed to go negative, so we ignore in that case)
+        if self.size != "F" and self.size + self.local_mod <= 0:
+            err = "Local mod {} is larger than die size {}; all rolls would be 0!".format(self.local_mod, self.size)
+            raise ValueError(err)
+
     def __get_die_mod(self, modStr):
         """ Get general die mod """
         mod = self.sTable.get(modStr, None)
