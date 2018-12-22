@@ -142,18 +142,22 @@ def test_too_few_dice():
         "0dF",
     )
     for dice_str in TEST:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
+        match_str = r"^Number of dice *"
+        assert err_info.match(match_str)
 
 
 def test_too_small_die():
     TEST = (
-        "0d0",
+        "1d0",
         "3d1",
     )
     for dice_str in TEST:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
+        match_str = r"^Die size of *"
+        assert err_info.match(match_str)
 
 
 def test_too_many_drops():
@@ -163,8 +167,10 @@ def test_too_many_drops():
         "3dF-4H",
     )
     for dice_str in TEST:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
+        match_str = r"^Too many \(*"
+        assert err_info.match(match_str)
 
 
 def test_too_large_local_mod():
@@ -173,5 +179,7 @@ def test_too_large_local_mod():
         "3(d2-2)-2H",
     )
     for dice_str in TEST:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
+        match_str = r"^Local mod *"
+        assert err_info.match(match_str)

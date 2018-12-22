@@ -31,5 +31,7 @@ def test_dice_tokenizer_raise():
         "7(d10-1)+L-R",
     )
     for format_str in TESTS:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err_info:
             tokens = tuple(DiceTokenizer(format_str))
+        match_str = r"^Illegal character '*"
+        assert err_info.match(match_str)
