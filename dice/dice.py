@@ -237,24 +237,27 @@ class diceTable:
 
         return True
 
-    def __isStrDropLow(self, s, chars=['L', 'l']):
+    def __isStrDropMod(self, s, chars):
         """ Check if s matches <str-drop-low> """
-        try:
-            assert s[0] == '-'
-            assert s[-1] in chars
-            mid = s[1:-1]
-            if mid != '':
-                int(mid)
-        except AssertionError:
-            return False
-        except ValueError:
-            return False
-        else:
-            return True
+        # A drop mod has three pieces:
+        #
+        # It starts with a -
+        has_minus = s[0] == '-'
+        # It ends with a specific character
+        has_char = s[-1] in chars
+        # And the midle is an integer or empty
+        mid = s[1:-1]
+        ok_mid = mid == '' or mid.isdigit()
+
+        return has_minus and has_char and ok_mid
+
+    def __isStrDropLow(self, s):
+        """ Check if s matches <str-drop-low> """
+        return self.__isStrDropMod(s, chars=['L', 'l'])
 
     def __isStrDropHigh(self, s):
         """ Check if s matches <str-drop-high> """
-        return self.__isStrDropLow(s, chars=['H', 'h'])
+        return self.__isStrDropMod(s, chars=['H', 'h'])
 
     def __isLocalMod(self, s):
         """ Check if s matches <local-mod> """
