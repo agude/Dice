@@ -113,7 +113,7 @@ class DiceTable:
             "<local-mod>": self.__is_local_mod,
             "<global-mod>": self.__is_global_mod,
             "<drop>": None,
-            "<int-die-num>": self.__is_int,
+            "<int-die-num>": self.__is_die_num,
             "<str-die-size>": self.__is_str_die_size,
             "<str-drop-mod>": None,
             "<str-drop-high>": self.__is_str_drop_high,
@@ -287,7 +287,7 @@ class DiceTable:
         # the check.
         return self.__is_local_mod(stream_token)
 
-    def __is_int(self, stream_token):
+    def __is_die_num(self, stream_token):
         """ Check if stream_token is an integer """
         return stream_token.isdecimal()
 
