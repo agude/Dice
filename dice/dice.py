@@ -86,10 +86,10 @@ class LLParser:
                 result = self.table.compare(stack_element, stream_element)
                 if result is True:
                     keep_stream_element = False
-                    self.table.s_table[stack_element] = stream_element
+                    self.table.saved_value_table[stack_element] = stream_element
                     continue
                 else:
-                    self.table.p_table[stack_element](stream_element, self.stack)
+                    self.table.stack_action_table[stack_element](stream_element, self.stack)
         if self.stack:
             # Out of stream, but still have stack
             # We check to make sure the stack is ""
@@ -100,7 +100,7 @@ class LLParser:
                 if result:
                     continue
                 else:
-                    self.table.p_table[stack_element](stream_element, self.stack)
+                    self.table.stack_action_table[stack_element](stream_element, self.stack)
             # Need to add a state check to avoid infinite loop in fail case
 
 
@@ -119,15 +119,15 @@ class DiceTable:
                 "<str-drop-high>": self.__is_str_drop_high,
                 "<str-drop-low>": self.__is_str_drop_low,
                 }
-        self.p_table = {
-                "<START>": self.__Start,
+        self.stack_action_table = {
+                "<START>": self.__start,
                 "<die-type>": self.__die_type,
                 "<drop>": self.__drop,
                 "<str-drop-mod>": self.__str_drop_mod,
                 "<local-mod>": self.__local_mod,
                 "<global-mod>": self.__global_mod,
                 }
-        self.s_table = {
+        self.saved_value_table = {
                 "<int-die-num>": None,
                 "<str-die-size>": None,
                 "<str-drop-high>": None,
@@ -151,7 +151,7 @@ class DiceTable:
 
             return comp_function(b)
 
-    def __Start(self, s, stack):
+    def __start(self, s, stack):
         """ Take action when stack status is <START> """
         # Reversed() is used because we use a stack, so the first item to test
         # is the last item on the stack. However, it is easier for the author
@@ -291,10 +291,10 @@ class Dice:
         self.table = table()
         self.tokenizer = tokenizer(self.dice_str)
         self.parser = parser(self.table, self.tokenizer)
-        self.s_table = self.table.s_table
+        self.saved_value_table = self.table.saved_value_table
 
-        self.number = int(self.s_table["<int-die-num>"])
-        die_size = self.s_table["<str-die-size>"][1:]
+        self.number = int(self.saved_value_table["<int-die-num>"])
+        die_size = self.saved_value_table["<str-die-size>"][1:]
         if die_size == "F":
             self.size = die_size
         else:
@@ -337,7 +337,7 @@ class Dice:
 
     def __get_die_mod(self, mod_str):
         """ Get general die mod """
-        mod = self.s_table.get(mod_str, None)
+        mod = self.saved_value_table.get(mod_str, None)
         if mod is None:
             return 0
 
@@ -345,7 +345,7 @@ class Dice:
 
     def __get_drop_mod(self, mod_str):
         """ Get general drop mod """
-        mod = self.s_table[mod_str]
+        mod = self.saved_value_table[mod_str]
 
         # No modifier
         if mod is None:
