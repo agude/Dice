@@ -216,12 +216,11 @@ class DiceTable:
 
     def __local_mod(self, stream_token, stack):
         """ Take action when stack status is <local-mod> """
+        # Local mod can be blank
         if stream_token == '':
-            # Local mod can be blank
             return True
+        # Otherwise it needs to end with H or L
         elif stream_token[-1] in ['L', 'l', 'H', 'h']:
-            # There is no local/global mod
-            # We are already at the drop condition
             return True
         elif stream_token[0] in ['-', '+']:
             stack.append("<str-local-mod>")
@@ -288,7 +287,7 @@ class DiceTable:
         return self.__is_local_mod(stream_token)
 
     def __is_die_num(self, stream_token):
-        """ Check if stream_token is an integer """
+        """ Check if stream_token matches <int-die-num> """
         return stream_token.isdecimal()
 
 BNF = """
