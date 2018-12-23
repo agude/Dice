@@ -360,7 +360,7 @@ class Dice:
         return int(mod)
 
     def __get_drop_mod(self, modStr):
-        """ Get geneal drop mod """
+        """ Get general drop mod """
         mod = self.sTable[modStr]
 
         # No modifier
