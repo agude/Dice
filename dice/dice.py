@@ -136,22 +136,42 @@ class DiceTable:
                 "<local-mod>": None,
                 }
 
-    def compare(self, a, b):
-        """ Compare a, b using the compairison table. """
-        if len(a) == 1:
-            # For '(', ')', and other single characters
-            return a == b
-        else:
-            try:
-                comp_function = self.comparison_table[a]
-            except KeyError:
-                return None  # Should raise error
-            if comp_function is None:
-                return None
+    def compare(self, token_string, stream_token):
+        """ Compare a token from the stream to the token string on the stack.
 
-            return comp_function(b)
+        In an LL Parser, we need to check if the item on the stack
+        (token_string) and the item from the stream (stream_token) match. If
+        they do we remove the items and process the next item in the stream. If
+        they do not match, we take some action and add items to the stack.
 
-    def __start(self, s, stack):
+        This function compares the two items, which sometimes requires a
+        specialized comparison function specified in the comparison_table.
+
+        For single character token_strings (mostly parenthesis) the equality
+        operator is used to check instead of a specialized function.
+
+        Args:
+            token_string (str): The token string from the stack, like '<START>'
+                or '<die-type>'.
+            stream_token (str): An item from the tokenized stream, like 'd6' or '-H'
+
+        Returns:
+            Bool: True if the stream_token is the same as the token_string, False
+                otherwise.
+
+        """
+        # If a is a single character, then the comparison is just equality
+        if len(token_string) == 1:
+            return token_string == stream_token
+
+        # Otherwise get the comparison function for the 'a' object and use it
+        comp_function = self.comparison_table[token_string]
+        if comp_function is None:
+            return False
+
+        return comp_function(stream_token)
+
+    def __start(self, stream_token, stack):
         """ Take action when stack status is <START> """
         # Reversed() is used because we use a stack, so the first item to test
         # is the last item on the stack. However, it is easier for the author
@@ -159,117 +179,117 @@ class DiceTable:
         stack += reversed(["<int-die-num>", "<die-type>", "<global-mod>", "<drop>"])
         return True
 
-    def __die_type(self, s, stack):
+    def __die_type(self, stream_token, stack):
         """ Take action when stack status is <die-type> """
-        if s == '(':
+        if stream_token == '(':
             stack += reversed(["(", "<str-die-size>", "<local-mod>", ")"])
             return True
-        elif s[0] == 'd':
+        elif stream_token[0] == 'd':
             stack.append("<str-die-size>")
         else:
             return False
 
-    def __drop(self, s, stack):
+    def __drop(self, stream_token, stack):
         """ Take action when stack status is <drop> """
-        if s == '':
+        if stream_token == '':
             # Drop can be blank
             return True
-        elif s[-1] in ['L', 'l', 'H', 'h']:
+        elif stream_token[-1] in ['L', 'l', 'H', 'h']:
             stack += reversed(["<str-drop-mod>", "<drop>"])
             return True
         else:
             return False
 
-    def __str_drop_mod(self, s, stack):
+    def __str_drop_mod(self, stream_token, stack):
         """ Take action when stack status is <drop> """
-        if s[0] == '-':
-            if s[-1] in ['L', 'l']:
+        if stream_token[0] == '-':
+            if stream_token[-1] in ['L', 'l']:
                 stack.append("<str-drop-low>")
                 return True
-            elif s[-1] in ['H', 'h']:
+            elif stream_token[-1] in ['H', 'h']:
                 stack.append("<str-drop-high>")
                 return True
             else:
                 return False
-        else:
-            return False
 
-    def __local_mod(self, s, stack):
+        return False
+
+    def __local_mod(self, stream_token, stack):
         """ Take action when stack status is <local-mod> """
-        if s == '':
+        if stream_token == '':
             # Local mod can be blank
             return True
-        elif s[-1] in ['L', 'l', 'H', 'h']:
+        elif stream_token[-1] in ['L', 'l', 'H', 'h']:
             # There is no local/global mod
             # We are already at the drop condition
             return True
-        elif s[0] in ['-', '+']:
+        elif stream_token[0] in ['-', '+']:
             stack.append("<str-local-mod>")
             return True
-        else:
-            return False
 
-    def __global_mod(self, s, stack):
+        return False
+
+    def __global_mod(self, stream_token, stack):
         """ Take action when stack status is <global-mod> """
-        return self.__local_mod(s, stack)
+        return self.__local_mod(stream_token, stack)
 
-    def __is_str_die_size(self, s):
+    def __is_str_die_size(self, stream_token):
         """ Check if s matches <str-die-size> """
         # Must have a "d" as the first part of the token
-        if not s[0] == 'd':
+        if not stream_token[0] == 'd':
             return False
         # Must then be followed by an integer or an F for fate dice
-        is_int = s[1:].isdecimal()
-        if not is_int and s[1] != 'F':
+        is_int = stream_token[1:].isdecimal()
+        if not is_int and stream_token[1] != 'F':
             return False
 
         return True
 
-    def __is_str_drop_mod(self, s, chars):
-        """ Check if s matches <str-drop-low> """
+    def __is_str_drop_mod(self, stream_token, chars):
+        """ Check if stream_token matches <str-drop-low> """
         # A drop mod has three pieces:
         #
         # It starts with a -
-        has_minus = s[0] == '-'
+        has_minus = stream_token[0] == '-'
         # It ends with a specific character
-        has_char = s[-1] in chars
-        # And the midle is an integer or empty
-        mid = s[1:-1]
+        has_char = stream_token[-1] in chars
+        # And the middle is an integer or empty
+        mid = stream_token[1:-1]
         ok_mid = mid == '' or mid.isdecimal()
 
         return has_minus and has_char and ok_mid
 
-    def __is_str_drop_low(self, s):
-        """ Check if s matches <str-drop-low> """
-        return self.__is_str_drop_mod(s, chars=['L', 'l'])
+    def __is_str_drop_low(self, stream_token):
+        """ Check if stream_token matches <str-drop-low> """
+        return self.__is_str_drop_mod(stream_token, chars=['L', 'l'])
 
-    def __is_str_drop_high(self, s):
-        """ Check if s matches <str-drop-high> """
-        return self.__is_str_drop_mod(s, chars=['H', 'h'])
+    def __is_str_drop_high(self, stream_token):
+        """ Check if stream_token matches <str-drop-high> """
+        return self.__is_str_drop_mod(stream_token, chars=['H', 'h'])
 
-    def __is_local_mod(self, s):
-        """ Check if s matches <local-mod> """
+    def __is_local_mod(self, stream_token):
+        """ Check if stream_token matches <local-mod> """
         # A local mod is allowed to be empty
-        if s == '':
+        if stream_token == '':
             return True
         # Otherwise it must look like a sign and an integer
-        has_sign = s[0] in ['-', '+']
-        has_int = s[1:].isdecimal()
+        has_sign = stream_token[0] in ['-', '+']
+        has_int = stream_token[1:].isdecimal()
 
         if has_sign and has_int:
             return True
 
         return False
 
-    def __is_global_mod(self, s):
-        """ Check if s matches <global-mod> """
+    def __is_global_mod(self, stream_token):
+        """ Check if stream_token matches <global-mod> """
         # A global mod has the exact same form as a local mod, so we can reuse
         # the check.
-        return self.__is_local_mod(s)
+        return self.__is_local_mod(stream_token)
 
-    def __is_int(self, s):
-        """ Check if s is an integer """
-        return s.isdecimal()
+    def __is_int(self, stream_token):
+        """ Check if stream_token is an integer """
+        return stream_token.isdecimal()
 
 BNF = """
 <dice-notation> ::= <int-die-num> <die-type> <global-mod> <drop>
