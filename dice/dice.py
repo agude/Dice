@@ -108,33 +108,33 @@ class DiceTable:
     """ """
     def __init__(self):
         self.comparison_table = {
-                "<START>": None,
-                "<die-type>": None,
-                "<local-mod>": self.__is_local_mod,
-                "<global-mod>": self.__is_global_mod,
-                "<drop>": None,
-                "<int-die-num>": self.__is_int,
-                "<str-die-size>": self.__is_str_die_size,
-                "<str-drop-mod>": None,
-                "<str-drop-high>": self.__is_str_drop_high,
-                "<str-drop-low>": self.__is_str_drop_low,
-                }
+            "<START>": None,
+            "<die-type>": None,
+            "<local-mod>": self.__is_local_mod,
+            "<global-mod>": self.__is_global_mod,
+            "<drop>": None,
+            "<int-die-num>": self.__is_int,
+            "<str-die-size>": self.__is_str_die_size,
+            "<str-drop-mod>": None,
+            "<str-drop-high>": self.__is_str_drop_high,
+            "<str-drop-low>": self.__is_str_drop_low,
+        }
         self.stack_action_table = {
-                "<START>": self.__start,
-                "<die-type>": self.__die_type,
-                "<drop>": self.__drop,
-                "<str-drop-mod>": self.__str_drop_mod,
-                "<local-mod>": self.__local_mod,
-                "<global-mod>": self.__global_mod,
-                }
+            "<START>": self.__start,
+            "<die-type>": self.__die_type,
+            "<drop>": self.__drop,
+            "<str-drop-mod>": self.__str_drop_mod,
+            "<local-mod>": self.__local_mod,
+            "<global-mod>": self.__global_mod,
+        }
         self.saved_value_table = {
-                "<int-die-num>": None,
-                "<str-die-size>": None,
-                "<str-drop-high>": None,
-                "<str-drop-low>": None,
-                "<global-mod>": None,
-                "<local-mod>": None,
-                }
+            "<int-die-num>": None,
+            "<str-die-size>": None,
+            "<str-drop-high>": None,
+            "<str-drop-low>": None,
+            "<global-mod>": None,
+            "<local-mod>": None,
+        }
 
     def compare(self, token_string, stream_token):
         """ Compare a token from the stream to the token string on the stack.
