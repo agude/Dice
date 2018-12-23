@@ -1,15 +1,10 @@
 #!/usr/bin/python3
 
-"""
-Allows command line options to be parsed. Called first to in order to let
-functions use them.
-"""
-
-import argparse
 from random import randint
+import argparse
+import logging
 
 
-#Tokenizer
 class DiceTokenizer:
     """ Returns a dice token """
     def __init__(self, input):
@@ -73,7 +68,6 @@ class DiceTokenizer:
                 raise ValueError(err)
 
 
-#LL Parser
 class llParser:
     """ LL Parser """
     def __init__(self, table, tokenizer):
@@ -111,7 +105,6 @@ class llParser:
             # Need to add a state check to avoid infinite loop in fail case
 
 
-#LL Table
 class diceTable:
     """ """
     def __init__(self):
@@ -304,8 +297,8 @@ class Dice:
     def __init__(self, dice_str, parser=llParser, tokenizer=DiceTokenizer, table=diceTable):
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.dice_str = dice_str
-        self.table = diceTable()
-        self.tokenizer = DiceTokenizer(self.dice_str)
+        self.table = table()
+        self.tokenizer = tokenizer(self.dice_str)
         self.parser = parser(self.table, self.tokenizer)
         self.sTable = self.table.sTable
 
@@ -403,7 +396,6 @@ class Dice:
         else:
             output = values
 
-        print(output)
         return output
 
 
