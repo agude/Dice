@@ -1,6 +1,7 @@
 import pytest
 
 from dice.dice import DiceTokenizer
+import re
 
 
 def test_dice_tokenizer():
@@ -33,5 +34,6 @@ def test_dice_tokenizer_raise():
     for format_str in TESTS:
         with pytest.raises(ValueError) as err_info:
             tokens = tuple(DiceTokenizer(format_str))
-        match_str = r"^Illegal character '*"
-        assert err_info.match(match_str)
+        match_str = r"Illegal character '.+' found in dice format string!"
+        err_str = str(err_info.value)
+        assert re.match(match_str, err_str)
