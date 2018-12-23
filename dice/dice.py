@@ -154,19 +154,16 @@ class diceTable:
 
     def __Start(self, s, stack):
         """ Take action when stack status is <START> """
-        stack.append("<drop>")
-        stack.append("<global-mod>")
-        stack.append("<die-type>")
-        stack.append("<int-die-num>")
+        # Reversed() is used because we use a stack, so the first item to test
+        # is the last item on the stack. However, it is easier for the author
+        # to think left to right.
+        stack += reversed(["<int-die-num>", "<die-type>", "<global-mod>", "<drop>"])
         return True
 
     def __dieType(self, s, stack):
         """ Take action when stack status is <die-type> """
         if s == '(':
-            stack.append(")")
-            stack.append("<local-mod>")
-            stack.append("<str-die-size>")
-            stack.append("(")
+            stack += reversed(["(", "<str-die-size>", "<local-mod>", ")"])
             return True
         elif s[0] == 'd':
             stack.append("<str-die-size>")
@@ -179,8 +176,7 @@ class diceTable:
             # Drop can be blank
             return True
         elif s[-1] in ['L', 'l', 'H', 'h']:
-            stack.append("<drop>")
-            stack.append("<str-drop-mod>")
+            stack += reversed(["<str-drop-mod>", "<drop>"])
             return True
         else:
             return False
