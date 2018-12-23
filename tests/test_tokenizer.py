@@ -35,5 +35,4 @@ def test_dice_tokenizer_raise():
         with pytest.raises(ValueError) as err_info:
             tokens = tuple(DiceTokenizer(format_str))
         match_str = r"Illegal character '.+' found in dice format string!"
-        err_str = str(err_info.value)
-        assert re.match(match_str, err_str)
+        assert err_info.match(match_str)

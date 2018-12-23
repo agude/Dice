@@ -146,8 +146,7 @@ def test_too_few_dice():
         with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
         match_str = r"Number of dice .?[0-9]+ is less than 1."
-        err_str = str(err_info.value)
-        assert re.match(match_str, err_str)
+        assert err_info.match(match_str)
 
 
 def test_too_small_die():
@@ -159,8 +158,7 @@ def test_too_small_die():
         with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
         match_str = r"Die size of [0-9]+ is less than 2."
-        err_str = str(err_info.value)
-        assert re.match(match_str, err_str)
+        assert err_info.match(match_str)
 
 
 def test_too_many_drops():
@@ -173,8 +171,7 @@ def test_too_many_drops():
         with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
         match_str = r"Too many \([0-9]+\) dice dropped, but only [0-9]+ dice used."
-        err_str = str(err_info.value)
-        assert re.match(match_str, err_str)
+        assert err_info.match(match_str)
 
 
 def test_too_large_local_mod():
@@ -186,5 +183,4 @@ def test_too_large_local_mod():
         with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
         match_str = r"Local mod -[0-9]+ is larger than die size [0-9]+; all rolls would be 0!"
-        err_str = str(err_info.value)
-        assert re.match(match_str, err_str)
+        assert err_info.match(match_str)
