@@ -219,7 +219,7 @@ class DiceTable:
         if not s[0] == 'd':
             return False
         # Must then be followed by an integer or an F for fate dice
-        is_int = s[1:].isdigit()
+        is_int = s[1:].isdecimal()
         if not is_int and s[1] != 'F':
             return False
 
@@ -235,7 +235,7 @@ class DiceTable:
         has_char = s[-1] in chars
         # And the midle is an integer or empty
         mid = s[1:-1]
-        ok_mid = mid == '' or mid.isdigit()
+        ok_mid = mid == '' or mid.isdecimal()
 
         return has_minus and has_char and ok_mid
 
@@ -254,7 +254,7 @@ class DiceTable:
             return True
         # Otherwise it must look like a sign and an integer
         has_sign = s[0] in ['-', '+']
-        has_int = s[1:].isdigit()
+        has_int = s[1:].isdecimal()
 
         if has_sign and has_int:
             return True
@@ -269,11 +269,7 @@ class DiceTable:
 
     def __is_int(self, s):
         """ Check if s is an integer """
-        try:
-            int(s)
-            return True
-        except ValueError:
-            return False
+        return s.isdecimal()
 
 BNF = """
 <dice-notation> ::= <int-die-num> <die-type> <global-mod> <drop>
