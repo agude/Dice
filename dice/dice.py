@@ -68,7 +68,7 @@ class DiceTokenizer:
                 raise ValueError(err)
 
 
-class llParser:
+class LLParser:
     """ LL Parser """
     def __init__(self, table, tokenizer):
         """ """
@@ -79,56 +79,55 @@ class llParser:
 
     def __loop(self):
         """ Run while loop until self.stack is empty """
-        for streamElement in self.tokenizer:
-            keepStreamElement = True
-            while keepStreamElement and self.stack:
-                stackElement = self.stack.pop()
-                result = self.table.compare(stackElement, streamElement)
-                #print stackElement, streamElement, result
+        for stream_element in self.tokenizer:
+            keep_stream_element = True
+            while keep_stream_element and self.stack:
+                stack_element = self.stack.pop()
+                result = self.table.compare(stack_element, stream_element)
                 if result is True:
-                    keepStreamElement = False
-                    self.table.sTable[stackElement] = streamElement
+                    keep_stream_element = False
+                    self.table.s_table[stack_element] = stream_element
                     continue
                 else:
-                    self.table.pTable[stackElement](streamElement, self.stack)
+                    self.table.p_table[stack_element](stream_element, self.stack)
         if self.stack:
             # Out of stream, but still have stack
-            # We check to make sure the stack is isomorphic to ""
-            streamElement = ''
+            # We check to make sure the stack is ""
+            stream_element = ''
             while self.stack:
-                stackElement = self.stack.pop()
-                result = self.table.compare(stackElement, streamElement)
+                stack_element = self.stack.pop()
+                result = self.table.compare(stack_element, stream_element)
                 if result:
                     continue
                 else:
-                    self.table.pTable[stackElement](streamElement, self.stack)
+                    self.table.p_table[stack_element](stream_element, self.stack)
             # Need to add a state check to avoid infinite loop in fail case
 
 
-class diceTable:
+class DiceTable:
     """ """
     def __init__(self):
-        self.cTable = {
+        self.comparison_table = {
                 "<START>": None,
                 "<die-type>": None,
                 "<local-mod>": self.__is_local_mod,
                 "<global-mod>": self.__is_global_mod,
                 "<drop>": None,
-                "<int-die-num>": self.__isInt,
-                "<str-die-size>": self.__isStrDieSize,
+                "<int-die-num>": self.__is_int,
+                "<str-die-size>": self.__is_str_die_size,
                 "<str-drop-mod>": None,
                 "<str-drop-high>": self.__is_str_drop_high,
                 "<str-drop-low>": self.__is_str_drop_low,
                 }
-        self.pTable = {
+        self.p_table = {
                 "<START>": self.__Start,
-                "<die-type>": self.__dieType,
+                "<die-type>": self.__die_type,
                 "<drop>": self.__drop,
-                "<str-drop-mod>": self.__strDropMod,
-                "<local-mod>": self.__localMod,
-                "<global-mod>": self.__globalMod,
+                "<str-drop-mod>": self.__str_drop_mod,
+                "<local-mod>": self.__local_mod,
+                "<global-mod>": self.__global_mod,
                 }
-        self.sTable = {
+        self.s_table = {
                 "<int-die-num>": None,
                 "<str-die-size>": None,
                 "<str-drop-high>": None,
@@ -144,13 +143,13 @@ class diceTable:
             return a == b
         else:
             try:
-                compFunction = self.cTable[a]
+                comp_function = self.comparison_table[a]
             except KeyError:
                 return None  # Should raise error
-            if compFunction is None:
+            if comp_function is None:
                 return None
 
-            return compFunction(b)
+            return comp_function(b)
 
     def __Start(self, s, stack):
         """ Take action when stack status is <START> """
@@ -160,7 +159,7 @@ class diceTable:
         stack += reversed(["<int-die-num>", "<die-type>", "<global-mod>", "<drop>"])
         return True
 
-    def __dieType(self, s, stack):
+    def __die_type(self, s, stack):
         """ Take action when stack status is <die-type> """
         if s == '(':
             stack += reversed(["(", "<str-die-size>", "<local-mod>", ")"])
@@ -181,7 +180,7 @@ class diceTable:
         else:
             return False
 
-    def __strDropMod(self, s, stack):
+    def __str_drop_mod(self, s, stack):
         """ Take action when stack status is <drop> """
         if s[0] == '-':
             if s[-1] in ['L', 'l']:
@@ -195,7 +194,7 @@ class diceTable:
         else:
             return False
 
-    def __localMod(self, s, stack):
+    def __local_mod(self, s, stack):
         """ Take action when stack status is <local-mod> """
         if s == '':
             # Local mod can be blank
@@ -210,11 +209,11 @@ class diceTable:
         else:
             return False
 
-    def __globalMod(self, s, stack):
+    def __global_mod(self, s, stack):
         """ Take action when stack status is <global-mod> """
-        return self.__localMod(s, stack)
+        return self.__local_mod(s, stack)
 
-    def __isStrDieSize(self, s):
+    def __is_str_die_size(self, s):
         """ Check if s matches <str-die-size> """
         # Must have a "d" as the first part of the token
         if not s[0] == 'd':
@@ -268,7 +267,7 @@ class diceTable:
         # the check.
         return self.__is_local_mod(s)
 
-    def __isInt(self, s):
+    def __is_int(self, s):
         """ Check if s is an integer """
         try:
             int(s)
@@ -290,16 +289,16 @@ BNF = """
 class Dice:
     """ A class to roll dice based on a dice format string. """
 
-    def __init__(self, dice_str, parser=llParser, tokenizer=DiceTokenizer, table=diceTable):
+    def __init__(self, dice_str, parser=LLParser, tokenizer=DiceTokenizer, table=DiceTable):
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.dice_str = dice_str
         self.table = table()
         self.tokenizer = tokenizer(self.dice_str)
         self.parser = parser(self.table, self.tokenizer)
-        self.sTable = self.table.sTable
+        self.s_table = self.table.s_table
 
-        self.number = int(self.sTable["<int-die-num>"])
-        die_size = self.sTable["<str-die-size>"][1:]
+        self.number = int(self.s_table["<int-die-num>"])
+        die_size = self.s_table["<str-die-size>"][1:]
         if die_size == "F":
             self.size = die_size
         else:
@@ -340,17 +339,17 @@ class Dice:
             err = "Local mod {} is larger than die size {}; all rolls would be 0!".format(self.local_mod, self.size)
             raise ValueError(err)
 
-    def __get_die_mod(self, modStr):
+    def __get_die_mod(self, mod_str):
         """ Get general die mod """
-        mod = self.sTable.get(modStr, None)
+        mod = self.s_table.get(mod_str, None)
         if mod is None:
             return 0
 
         return int(mod)
 
-    def __get_drop_mod(self, modStr):
+    def __get_drop_mod(self, mod_str):
         """ Get general drop mod """
-        mod = self.sTable[modStr]
+        mod = self.s_table[mod_str]
 
         # No modifier
         if mod is None:
