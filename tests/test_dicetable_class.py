@@ -22,7 +22,7 @@ def test_compare_match_none():
         "<START>",
         "<die-type>",
         "<drop>",
-        "<str-drop-mod>",
+        "<drop-mod>",
     )
     POSSIBLE_MATCHES = ("d6", "(", "-H", "-12", "+15",)
     table = DiceTable()
@@ -122,7 +122,7 @@ def test_compare_is_str_die_size():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<str-die-size>", stream_token) == answer
+        assert table.compare("<die-size>", stream_token) == answer
 
 
 def test_compare_is_str_drop_high():
@@ -153,7 +153,7 @@ def test_compare_is_str_drop_high():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<str-drop-high>", stream_token) == answer
+        assert table.compare("<drop-high>", stream_token) == answer
 
 
 def test_compare_is_str_drop_low():
@@ -184,7 +184,7 @@ def test_compare_is_str_drop_low():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<str-drop-low>", stream_token) == answer
+        assert table.compare("<drop-low>", stream_token) == answer
 
 
 def test_compare_is_die_num():
@@ -215,4 +215,4 @@ def test_compare_is_die_num():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<int-die-num>", stream_token) == answer
+        assert table.compare("<die-num>", stream_token) == answer
