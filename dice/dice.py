@@ -457,7 +457,7 @@ def main():
     args = parser.parse_args()
 
     d = Dice(args.dice_notation)
-    d.roll(args.sum)
+    print(d.roll(args.sum))
 
 
 if __name__ == '__main__':
