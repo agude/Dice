@@ -83,7 +83,6 @@ class LLParser:
             keep_stream_element = True
             while keep_stream_element and self.stack:
                 stack_element = self.stack.pop()
-                print(stream_element, stack_element)
                 result = self.table.compare(stack_element, stream_element)
                 if result is True:
                     keep_stream_element = False
@@ -91,18 +90,6 @@ class LLParser:
                     continue
                 else:
                     self.table.stack_action_table[stack_element](stream_element, self.stack)
-        if self.stack:
-            # Out of stream, but still have stack
-            # We check to make sure the stack is ""
-            stream_element = ''
-            while self.stack:
-                stack_element = self.stack.pop()
-                result = self.table.compare(stack_element, stream_element)
-                if result:
-                    continue
-                else:
-                    self.table.stack_action_table[stack_element](stream_element, self.stack)
-            # Need to add a state check to avoid infinite loop in fail case
 
 
 class DiceTable:
