@@ -111,11 +111,11 @@ class DiceTable:
         self.comparison_table = {
             "<START>": None,
             "<die-type>": None,
+            "<die-num>": self.__is_die_num,
+            "<die-size>": self.__is_str_die_size,
             "<local-mod>": self.__is_local_mod,
             "<global-mod>": self.__is_global_mod,
             "<drop>": None,
-            "<die-num>": self.__is_die_num,
-            "<die-size>": self.__is_str_die_size,
             "<drop-mod>": None,
             "<drop-high>": self.__is_str_drop_high,
             "<drop-low>": self.__is_str_drop_low,
@@ -123,19 +123,19 @@ class DiceTable:
         self.stack_action_table = {
             "<START>": self.__start,
             "<die-type>": self.__die_type,
-            "<drop>": self.__drop,
-            "<drop-mod>": self.__str_drop_mod,
             # Global mod can be blank, in which case we don't have anything to
             # add to the stack, but we still need to call a function.
             "<global-mod>": lambda stream_token, strack: False,
+            "<drop>": self.__drop,
+            "<drop-mod>": self.__str_drop_mod,
         }
         self.saved_value_table = {
             "<die-num>": None,
             "<die-size>": None,
+            "<local-mod>": None,
+            "<global-mod>": None,
             "<drop-high>": None,
             "<drop-low>": None,
-            "<global-mod>": None,
-            "<local-mod>": None,
         }
 
     def compare(self, token_string, stream_token):
