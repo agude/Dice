@@ -33,6 +33,7 @@ def test_compare_match_none():
 def test_compare_is_local_mod():
     TEST_PAIRS = (
         # True
+        ("", True),
         ("-0", True),
         ("-15", True),
         ("-35", True),
@@ -64,6 +65,7 @@ def test_compare_is_local_mod():
 def test_compare_is_global_mod():
     TEST_PAIRS = (
         # True
+        ("", True),
         ("-0", True),
         ("-15", True),
         ("-35", True),
