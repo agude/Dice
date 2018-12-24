@@ -7,9 +7,10 @@ import logging
 
 class DiceTokenizer:
     """ Returns a dice token """
-    def __init__(self, input):
+    def __init__(self, input_str):
         """ """
-        self.input = input
+        logging.info("Input string for tokenization: %s", input_str)
+        self.input = input_str
         self.end = len(self.input)
 
         # The three types of characters we encounter in a dice format string
@@ -31,6 +32,7 @@ class DiceTokenizer:
 
             # End of stream check, where we yield all remaining
             if i == self.end - 1 and char in self.INT_CHARS.union(self.LH_CHARS).union(self.FATE_CHARS):
+                logging.debug("Yielding: %s", buffer + char)
                 yield buffer + char
 
             # Handle symbols
@@ -41,6 +43,7 @@ class DiceTokenizer:
                 else:
                     # But if we already have a buffer, we yield it,
                     # and start a new one to avoid "-3-"
+                    logging.debug("Yielding: %s", buffer)
                     yield buffer
                     buffer = char
 
@@ -58,8 +61,10 @@ class DiceTokenizer:
             # by ")". This is why we yield twice, and not add them together.
             elif char in self.PARENS:
                 if buffer:
+                    logging.debug("Yielding: %s", buffer)
                     yield buffer
                     buffer = ''
+                logging.debug("Yielding: %s", char)
                 yield char
 
             # Something illegal!
@@ -79,13 +84,18 @@ class LLParser:
 
     def __loop(self):
         """ Run while loop until self.stack is empty """
+        logging.info("Beginning loop over tokens.")
         for stream_element in self.tokenizer:
             keep_stream_element = True
             while keep_stream_element and self.stack:
+                logging.debug("Stack is: '%s'", self.stack)
                 stack_element = self.stack.pop()
+                logging.debug("Stack element: '%s'; stream element: '%s'", stack_element, stream_element)
                 result = self.table.compare(stack_element, stream_element)
                 if result is True:
                     keep_stream_element = False
+                    # TODO: Filter out non-token responses like '('
+                    logging.info("Saving value: '%s' = '%s'.", stack_element, stream_element)
                     self.table.saved_value_table[stack_element] = stream_element
                     continue
                 else:
@@ -149,13 +159,16 @@ class DiceTable:
         """
         # If a is a single character, then the comparison is just equality
         if len(token_string) == 1:
+            logging.debug("Comparing: '%s' to '%s' with '=='", token_string, stream_token)
             return token_string == stream_token
 
         # Otherwise get the comparison function for the 'a' object and use it
         comp_function = self.comparison_table[token_string]
         if comp_function is None:
+            logging.debug("Comp function is 'None' for: '%s' to '%s'", token_string, stream_token)
             return False
 
+        logging.debug("Comparing: '%s' to '%s' with '%s'", token_string, stream_token, comp_function)
         return comp_function(stream_token)
 
     def __start(self, stream_token, stack):
@@ -348,6 +361,8 @@ class Dice:
         self.parser = parser(self.table, self.tokenizer)
         self.saved_value_table = self.table.saved_value_table
 
+        logging.debug("Saved values: %s", self.saved_value_table)
+
         self.number = int(self.saved_value_table["<die-num>"])
         die_size = self.saved_value_table["<die-size>"][1:]
         if die_size == "F":
@@ -362,6 +377,8 @@ class Dice:
 
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
+        if self.do_sum:
+            logging.info("Turning on summing as required by presence of a global mod.")
 
         # Error checking to make sure the above values lead to valid
         # combinations of dice.
@@ -418,30 +435,53 @@ class Dice:
 
     def roll(self, do_sum=False):
         """ Roll the dice and print the result. """
+        logging.info("Rolling dice")
         # Generate rolls
         values = []
         for _ in range(0, self.number):
             # Fate Dice use F, and have sides (-1, 0, 1)
             if self.size == "F":
-                die_val = randint(-1, 1) + self.local_mod
+                rand_val = randint(-1, 1)
+                die_val = rand_val + self.local_mod
+                logging.debug("Roll value is %i = %i%i", die_val, rand_val, self.local_mod)
             else:
-                die_val = randint(1, self.size) + self.local_mod
+                rand_val = randint(1, self.size)
+                die_val = rand_val + self.local_mod
+                logging.debug("Roll value is %i = %i%i", die_val, rand_val, self.local_mod)
+
                 die_val = max(die_val, 0)  # Dice must roll at least 0 after mods
+                logging.debug("Roll value is '%i' after max()", die_val)
 
             values.append(die_val)
 
         # Remove highest and lowest dice
-        start_i = self.lowest_mod
-        end_i = len(values) - self.highest_mod
+        if self.lowest_mod >= 1 or self.highest_mod >= 1:
+            logging.info("Dropping High/Low dice.")
+            start_i = self.lowest_mod
+            end_i = len(values) - self.highest_mod
+            sorted_values = sorted(values)
 
-        values = sorted(values)[start_i:end_i]
+            logging.debug("Sorted dice values pre-dropping: %s", sorted_values)
+            low_dice = sorted_values[:start_i]
+            if low_dice:
+                logging.debug("Dropping low dice: %s", low_dice)
+
+            high_dice = sorted_values[end_i:]
+            if high_dice:
+                logging.debug("Dropping low dice: %s", high_dice)
+
+            values = sorted_values[start_i:end_i]
+
+        logging.debug("Final die values: %s", values)
 
         #Return values
         if self.do_sum or do_sum:
+            logging.info("Summing dice.")
             output = sum(values) + self.global_mod
         else:
             output = values
 
+        logging.debug("Final results: %s", output)
         return output
 
 
@@ -454,8 +494,28 @@ def main():
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 3.1.2")
     parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
+    parser.add_argument(
+        "--log",
+        help="set the logging level, defaults to WARNING",
+        dest="log_level",
+        default=logging.WARNING,
+        choices=[
+            'DEBUG',
+            'INFO',
+            'WARNING',
+            'ERROR',
+            'CRITICAL',
+        ],
+    )
+
     args = parser.parse_args()
 
+    # Set the logging level based on the arguments
+    logging.basicConfig(level=args.log_level)
+
+    logging.debug("Arguments: %s", args)
+
+    # Set up and roll the dice
     d = Dice(args.dice_notation)
     print(d.roll(args.sum))
 
