@@ -170,7 +170,7 @@ def test_too_many_drops():
     for dice_str in TEST:
         with pytest.raises(ValueError) as err_info:
             Dice(dice_str)
-        match_str = r"More dice dropped \([0-9]+\) than rolled \([0-9]+\)."
+        match_str = r"Number of dice dropped \([0-9]+\) greater than or equal to number rolled \([0-9]+\)."
         assert err_info.match(match_str)
 
 

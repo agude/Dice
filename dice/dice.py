@@ -380,8 +380,8 @@ class Dice:
 
         # If we have zero (or fewer) dice left after dropping
         if self.highest_mod + self.lowest_mod >= self.number:
-            dropped = self.highest_mod + self.local_mod
-            err = "More dice dropped ({}) than rolled ({}).".format(dropped, self.number)
+            dropped = self.highest_mod + self.lowest_mod
+            err = "Number of dice dropped ({}) greater than or equal to number rolled ({}).".format(dropped, self.number)
             raise ValueError(err)
 
         # If the local mod is too large, all rolls will be 0
