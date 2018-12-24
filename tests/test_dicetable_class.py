@@ -21,7 +21,6 @@ def test_compare_match_none():
     STARTS = (
         "<START>",
         "<die-type>",
-        "<drop>",
         "<drop-mod>",
     )
     POSSIBLE_MATCHES = ("d6", "(", "-H", "-12", "+15",)

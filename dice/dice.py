@@ -102,7 +102,6 @@ class DiceTable:
             "<die-size>": self.__is_str_die_size,
             "<local-mod>": self.__is_local_mod,
             "<global-mod>": self.__is_global_mod,
-            "<drop>": None,
             "<drop-mod>": None,
             "<drop-high>": self.__is_str_drop_high,
             "<drop-low>": self.__is_str_drop_low,
@@ -113,8 +112,7 @@ class DiceTable:
             # Global mod can be blank, in which case we don't have anything to
             # add to the stack, but we still need to call a function.
             "<global-mod>": lambda stream_token, strack: False,
-            "<drop>": self.__drop,
-            "<drop-mod>": self.__str_drop_mod,
+            "<drop-mod>": self.__drop_mod,
         }
         self.saved_value_table = {
             "<die-num>": None,
@@ -165,7 +163,7 @@ class DiceTable:
 
         Replaces the <START> token with the four parts of a dice format string:
 
-            <die-num> <die-type> <global-mod> <drop>
+            <die-num> <die-type> <global-mod> <drop-mod>
 
         Args:
             stream_token (str): The token from the stream, although it is ignored.
@@ -179,7 +177,7 @@ class DiceTable:
         # Reversed() is used because we use a stack, so the first item to test
         # is the last item on the stack. However, it is easier for the author
         # to think left to right.
-        stack += reversed(["<die-num>", "<die-type>", "<global-mod>", "<drop>"])
+        stack += reversed(["<die-num>", "<die-type>", "<global-mod>", "<drop-mod>"])
         return True
 
     def __die_type(self, stream_token, stack):
@@ -202,7 +200,7 @@ class DiceTable:
 
         Returns:
             bool: True if we successfully matched an action to the
-                `stream_token`, false otherwise.
+                `stream_token`, False otherwise.
 
         """
         # If we found a parenthesis, then we might have a local mod
@@ -216,14 +214,15 @@ class DiceTable:
 
         return False
 
-    def __drop(self, stream_token, stack):
-        """ Take action when stack status is <drop>.
+    def __drop_mod(self, stream_token, stack):
+        """ Take action when stack status is <drop-mod>.
 
-        Drop is nothing if `stream_token` is empty, or it can by a drop mod
-        followed by another drop if the `stream_token` ends in 'L' or 'H', as
-        follows:
+        Drop mod is nothing if `stream_token` is empty, or it can by a drop mod
+        low followed by another drop mod if the `stream_token` ends in 'L', or
+        a drop mod high followed by another drop mod if `stream_token` ends in
+        'H', as follows:
 
-            <drop-mod> <drop>
+            <drop-low> <drop-mod> | <drop-high> <drop-mod>
 
         Args:
             stream_token (str): The token from the stream.
@@ -232,42 +231,21 @@ class DiceTable:
 
         Returns:
             bool: True if we successfully matched an action to the
-                `stream_token`, false otherwise.
+                `stream_token`, False otherwise.
 
         """
         # Drop can be blank
         if stream_token == '':
             return True
         # Or it can be a drop mod
-        elif stream_token[-1] in ['L', 'l', 'H', 'h']:
-            stack += reversed(["<drop-mod>", "<drop>"])
-            return True
-
-        return False
-
-    def __str_drop_mod(self, stream_token, stack):
-        """ Take action when stack status is <drop-mod>.
-
-        A string drop mode can be either a "drop lowest", which ends with 'L'
-        or 'l', or a "drop highest", which ends with 'H' or 'h'. In both cases
-        it must start with a '-'.
-
-        Args:
-            stream_token (str): The token from the stream.
-            stack (list): The stack of `token_string`s, which we may modify by
-                pushing more `token_string`s onto.
-
-        Returns:
-            bool: True if we successfully matched an action to the
-                `stream_token`, false otherwise.
-
-        """
-        if stream_token[0] == '-':
+        elif stream_token[0] == '-':
+            # either low
             if stream_token[-1] in ['L', 'l']:
-                stack.append("<drop-low>")
+                stack += reversed(["<drop-low>", "<drop-mod>"])
                 return True
+            # or high
             elif stream_token[-1] in ['H', 'h']:
-                stack.append("<drop-high>")
+                stack += reversed(["<drop-high>", "<drop-mod>"])
                 return True
 
         return False
@@ -280,7 +258,7 @@ class DiceTable:
 
         Returns:
             bool: True if we successfully matched an action to the
-                `stream_token`, false otherwise.
+                `stream_token`, False otherwise.
 
         """
         # Must have a "d" as the first part of the token
@@ -304,7 +282,7 @@ class DiceTable:
 
         Returns:
             bool: True if we successfully matched an action to the
-                `stream_token`, false otherwise.
+                `stream_token`, False otherwise.
 
         """
         # A drop mod has three pieces:
@@ -352,10 +330,9 @@ class DiceTable:
         return stream_token.isdecimal()
 
 BNF = """
-<dice-notation> ::= <die-num> <die-type> <global-mod> <drop>
+<dice-notation> ::= <die-num> <die-type> <global-mod> <drop-mod>
 <die-type> ::= <die-size> | "(" <die-size> <local-mod> ")"
-<drop> ::= <drop-mod> <drop> | ""
-<drop-mod> ::= <drop-high> | <drop-low>
+<drop-mod> ::= <drop-high> <drop-mod> | <drop-low> <drop-mod> | ""
 """
 
 
