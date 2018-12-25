@@ -14,7 +14,7 @@ except ImportError:
 # Configure the package
 setup(
     name="Dice",
-    version="3.1.2",
+    version="4.0.0",
     description="A very complicated way of rolling dice by specifying the dice notation.",
     long_description=long_description,
     author="Alexander Gude",
