@@ -74,34 +74,67 @@ class DiceTokenizer:
 
 
 class LLParser:
-    """ LL Parser """
+    """ LL Parser. """
     def __init__(self, table, tokenizer):
-        """ """
         self.table = table
         self.stack = ['<START>']
         self.tokenizer = tokenizer
         self.__loop()
 
     def __loop(self):
-        """ Run while loop until self.stack is empty """
+        """ Run the LL Parser loop until the stack is empty. """
+        # An LL Parser works as follows:
+        #
+        # 1. It takes a token from the input stream, until the stream is empty.
+        # 2. It takes an element off the stack.
+        # 3. It compares the token with the stack element.
+        # 4. If the token and the element are the same, then it discards both
+        #    items and repeats from 1. This is when we save the result of the
+        #    parsing.
+        # 5. If the stream token and stack element do not match, then it looks
+        #    up an action function in a table indexed by the token and the
+        #    element. It then calls that function, which will often add more
+        #    items to the stack.
+        # 6. The stack element is discarded while the stream token is kept, and
+        #    it repeats at 2.
+
         logging.info("Beginning loop over tokens.")
-        for stream_element in self.tokenizer:
-            keep_stream_element = True
-            while keep_stream_element and self.stack:
+        # Step 1. Take a token from the stream
+        for stream_token in self.tokenizer:
+            keep_stream_token = True
+            # Step 2. Get an element from the stack
+            while keep_stream_token and self.stack:
                 logging.debug("Stack is: '%s'", self.stack)
                 stack_element = self.stack.pop()
-                logging.debug("Stack element: '%s'; stream element: '%s'", stack_element, stream_element)
-                result = self.table.compare(stack_element, stream_element)
+                # Step 3. Compare the token and the element
+                logging.debug("Stack element: '%s'; stream element: '%s'", stack_element, stream_token)
+                result = self.table.compare(stack_element, stream_token)
+                # Step 4. If the token and stack are the same, discard both
+                # (and save the result of parsing), and go back to step 1.
                 if result is True:
-                    keep_stream_element = False
+                    keep_stream_token = False
                     # We only want to save certain tokens like '<die-num>', not
                     # others like ')'
                     if stack_element in self.table.tokens_to_save:
-                        logging.info("Saving value: '%s' = '%s'.", stack_element, stream_element)
-                        self.table.saved_value_table[stack_element] = stream_element
+                        logging.info("Saving value: '%s' = '%s'.", stack_element, stream_token)
+                        self.table.saved_value_table[stack_element] = stream_token
                     continue
                 else:
-                    self.table.stack_action_table[stack_element](stream_element, self.stack)
+                    # Step 5. They do not match, so call the action function
+                    self.table.stack_action_table[stack_element](stream_token, self.stack)
+                    # Step 6. Go back to step 2.
+
+        # At this point the stack might not be empty, so check that the rest of
+        # the stack is compatible with an empty stream_token. This happens, for
+        # example, when we do not have global mods or drop mods.
+        if self.stack:
+            logging.debug("Stack not fully consumed, remaining items: %s", self.stack)
+            # TODO: Replace with actual LL Parser check instead of hard-coding. See:
+            # https://github.com/agude/Dice/issues/1
+            if self.stack != ["<drop-mod>", "<global-mod>"] and self.stack != ["<drop-mod>"]:
+                err = "Stack not fully consumed and remaining items are not compatible with an empty stream: {}".format(self.stack)
+                raise RuntimeError(err)
+            logging.debug("Stack cleared successfully.")
 
 
 class DiceTable:
