@@ -1,6 +1,6 @@
 import pytest
 
-from dice.dice import DiceTable
+from dice.dice import DiceTable, StackToken
 
 from itertools import product
 import re
@@ -19,9 +19,9 @@ def test_compare_single_char():
 def test_compare_match_none():
     # These should never match
     STARTS = (
-        "<START>",
-        "<die-type>",
-        "<drop-mod>",
+        StackToken.start,
+        StackToken.die_type,
+        StackToken.drop_mod,
     )
     POSSIBLE_MATCHES = ("d6", "(", "-H", "-12", "+15",)
     table = DiceTable()
@@ -58,7 +58,7 @@ def test_compare_is_local_mod():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<local-mod>", stream_token) == answer
+        assert table.compare(StackToken.local_mod, stream_token) == answer
 
 
 def test_compare_is_global_mod():
@@ -90,7 +90,7 @@ def test_compare_is_global_mod():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<global-mod>", stream_token) == answer
+        assert table.compare(StackToken.global_mod, stream_token) == answer
 
 
 def test_compare_is_str_die_size():
@@ -121,7 +121,7 @@ def test_compare_is_str_die_size():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<die-size>", stream_token) == answer
+        assert table.compare(StackToken.die_size, stream_token) == answer
 
 
 def test_compare_is_str_drop_high():
@@ -152,7 +152,7 @@ def test_compare_is_str_drop_high():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<drop-high>", stream_token) == answer
+        assert table.compare(StackToken.drop_high, stream_token) == answer
 
 
 def test_compare_is_str_drop_low():
@@ -183,7 +183,7 @@ def test_compare_is_str_drop_low():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<drop-low>", stream_token) == answer
+        assert table.compare(StackToken.drop_low, stream_token) == answer
 
 
 def test_compare_is_die_num():
@@ -214,4 +214,4 @@ def test_compare_is_die_num():
     )
     table = DiceTable()
     for stream_token, answer in TEST_PAIRS:
-        assert table.compare("<die-num>", stream_token) == answer
+        assert table.compare(StackToken.die_num, stream_token) == answer

@@ -1,8 +1,22 @@
 #!/usr/bin/python3
 
 from random import randint
+from enum import Enum, unique
 import argparse
 import logging
+
+
+@unique
+class StackToken(Enum):
+    start = 1
+    die_type = 2
+    die_num = 3
+    die_size = 4
+    local_mod = 5
+    global_mod = 6
+    drop_mod = 7
+    drop_high = 8
+    drop_low = 9
 
 
 class DiceTokenizer:
@@ -77,7 +91,7 @@ class LLParser:
     """ LL Parser. """
     def __init__(self, table, tokenizer):
         self.table = table
-        self.stack = ['<START>']
+        self.stack = [StackToken.start]
         self.tokenizer = tokenizer
         self.__loop()
 
@@ -113,9 +127,9 @@ class LLParser:
                 # (and save the result of parsing), and go back to step 1.
                 if result is True:
                     keep_stream_token = False
-                    # We only want to save certain tokens like '<die-num>', not
-                    # others like ')'
-                    if stack_element in self.table.tokens_to_save:
+                    # We only want to save certain tokens like
+                    # 'StackToken.die_num', not others like ')'
+                    if isinstance(stack_element, StackToken):
                         logging.info("Saving value: '%s' = '%s'.", stack_element, stream_token)
                         self.table.saved_value_table[stack_element] = stream_token
                     continue
@@ -131,7 +145,7 @@ class LLParser:
             logging.debug("Stack not fully consumed, remaining items: %s", self.stack)
             # TODO: Replace with actual LL Parser check instead of hard-coding. See:
             # https://github.com/agude/Dice/issues/1
-            if self.stack != ["<drop-mod>", "<global-mod>"] and self.stack != ["<drop-mod>"]:
+            if self.stack != [StackToken.drop_mod, StackToken.global_mod] and self.stack != [StackToken.drop_mod]:
                 err = "Stack not fully consumed and remaining items are not compatible with an empty stream: {}".format(self.stack)
                 raise RuntimeError(err)
             logging.debug("Stack cleared successfully.")
@@ -141,33 +155,32 @@ class DiceTable:
     """ """
     def __init__(self):
         self.comparison_table = {
-            "<START>": None,
-            "<die-type>": None,
-            "<die-num>": self.__is_die_num,
-            "<die-size>": self.__is_str_die_size,
-            "<local-mod>": self.__is_local_mod,
-            "<global-mod>": self.__is_global_mod,
-            "<drop-mod>": None,
-            "<drop-high>": self.__is_str_drop_high,
-            "<drop-low>": self.__is_str_drop_low,
+            StackToken.start: None,
+            StackToken.die_type: None,
+            StackToken.die_num: self.__is_die_num,
+            StackToken.die_size: self.__is_str_die_size,
+            StackToken.local_mod: self.__is_local_mod,
+            StackToken.global_mod: self.__is_global_mod,
+            StackToken.drop_mod: None,
+            StackToken.drop_high: self.__is_str_drop_high,
+            StackToken.drop_low: self.__is_str_drop_low,
         }
         self.stack_action_table = {
-            "<START>": self.__start,
-            "<die-type>": self.__die_type,
+            StackToken.start: self.__start,
+            StackToken.die_type: self.__die_type,
             # Global mod can be blank, in which case we don't have anything to
             # add to the stack, but we still need to call a function.
-            "<global-mod>": lambda stream_token, strack: False,
-            "<drop-mod>": self.__drop_mod,
+            StackToken.global_mod: lambda stream_token, strack: False,
+            StackToken.drop_mod: self.__drop_mod,
         }
-        self.tokens_to_save = frozenset((
-            "<die-num>",
-            "<die-size>",
-            "<local-mod>",
-            "<global-mod>",
-            "<drop-high>",
-            "<drop-low>",
-        ))
-        self.saved_value_table = {token: None for token in self.tokens_to_save}
+        self.saved_value_table = {
+            StackToken.die_num: None,
+            StackToken.die_size: None,
+            StackToken.local_mod: None,
+            StackToken.global_mod: None,
+            StackToken.drop_high: None,
+            StackToken.drop_low: None,
+        }
 
     def compare(self, token_string, stream_token):
         """ Compare a token from the stream to the token string on the stack.
@@ -184,8 +197,8 @@ class DiceTable:
         operator is used to check instead of a specialized function.
 
         Args:
-            token_string (str): The token string from the stack, like '<START>'
-                or '<die-type>'.
+            token_string (str): The token string from the stack, like
+                'StackToken.start' or 'StackToken.die_type'.
             stream_token (str): An item from the tokenized stream, like 'd6' or '-H'
 
         Returns:
@@ -194,7 +207,7 @@ class DiceTable:
 
         """
         # If a is a single character, then the comparison is just equality
-        if len(token_string) == 1:
+        if not isinstance(token_string, StackToken):
             logging.debug("Comparing: '%s' to '%s' with '=='", token_string, stream_token)
             return token_string == stream_token
 
@@ -208,11 +221,12 @@ class DiceTable:
         return comp_function(stream_token)
 
     def __start(self, stream_token, stack):
-        """ Take action when stack status is <START>.
+        """ Take action when stack status is StackToken.start.
 
-        Replaces the <START> token with the four parts of a dice format string:
+        Replaces the StackToken.start token with the four parts of a dice
+        format string:
 
-            <die-num> <die-type> <global-mod> <drop-mod>
+            StackToken.die_num StackToken.die_type StackToken.global_mod StackToken.drop_mod
 
         Args:
             stream_token (str): The token from the stream, although it is ignored.
@@ -226,21 +240,21 @@ class DiceTable:
         # Reversed() is used because we use a stack, so the first item to test
         # is the last item on the stack. However, it is easier for the author
         # to think left to right.
-        stack += reversed(["<die-num>", "<die-type>", "<global-mod>", "<drop-mod>"])
+        stack += reversed([StackToken.die_num, StackToken.die_type, StackToken.global_mod, StackToken.drop_mod])
         return True
 
     def __die_type(self, stream_token, stack):
-        """ Take action when stack status is <die-type>.
+        """ Take action when stack status is StackToken.die_type.
 
         Die type can lead down two paths, depending on the `stream_token`. If
         the `stream_token` is '(', then we might be starting a die type with
         local mod:
 
-            ( <die-size> <local-mod> )
+            ( StackToken.die_size StackToken.local_mod )
 
         Otherwise, if our token starts with 'd', it is just the die size:
 
-            <die-size>
+            StackToken.die_size
 
         Args:
             stream_token (str): The token from the stream.
@@ -254,24 +268,24 @@ class DiceTable:
         """
         # If we found a parenthesis, then we might have a local mod
         if stream_token == '(':
-            stack += reversed(["(", "<die-size>", "<local-mod>", ")"])
+            stack += reversed(["(", StackToken.die_size, StackToken.local_mod, ")"])
             return True
         # Otherwise it is just a normal die size
         elif stream_token[0] == 'd':
-            stack.append("<die-size>")
+            stack.append(StackToken.die_size)
             return True
 
         return False
 
     def __drop_mod(self, stream_token, stack):
-        """ Take action when stack status is <drop-mod>.
+        """ Take action when stack status is StackToken.drop_mod.
 
         Drop mod is nothing if `stream_token` is empty, or it can by a drop mod
         low followed by another drop mod if the `stream_token` ends in 'L', or
         a drop mod high followed by another drop mod if `stream_token` ends in
         'H', as follows:
 
-            <drop-low> <drop-mod> | <drop-high> <drop-mod>
+            StackToken.drop_low StackToken.drop_mod | StackToken.drop_high StackToken.drop_mod
 
         Args:
             stream_token (str): The token from the stream.
@@ -290,17 +304,17 @@ class DiceTable:
         elif stream_token[0] == '-':
             # either low
             if stream_token[-1] in ['L', 'l']:
-                stack += reversed(["<drop-low>", "<drop-mod>"])
+                stack += reversed([StackToken.drop_low, StackToken.drop_mod])
                 return True
             # or high
             elif stream_token[-1] in ['H', 'h']:
-                stack += reversed(["<drop-high>", "<drop-mod>"])
+                stack += reversed([StackToken.drop_high, StackToken.drop_mod])
                 return True
 
         return False
 
     def __is_str_die_size(self, stream_token):
-        """ Check if s matches <die-size>.
+        """ Check if s matches StackToken.die_size.
 
         Args:
             stream_token (str): The token from the stream.
@@ -321,7 +335,7 @@ class DiceTable:
         return True
 
     def __is_str_drop_mod(self, stream_token, chars):
-        """ Check if stream_token matches <drop-low>.
+        """ Check if stream_token matches StackToken.drop_low.
 
         Args:
             stream_token (str): The token from the stream.
@@ -347,15 +361,15 @@ class DiceTable:
         return has_minus and has_char and ok_mid
 
     def __is_str_drop_low(self, stream_token):
-        """ Check if stream_token matches <drop-low> """
+        """ Check if stream_token matches StackToken.drop_low """
         return self.__is_str_drop_mod(stream_token, chars=['L', 'l'])
 
     def __is_str_drop_high(self, stream_token):
-        """ Check if stream_token matches <drop-high> """
+        """ Check if stream_token matches StackToken.drop_high """
         return self.__is_str_drop_mod(stream_token, chars=['H', 'h'])
 
     def __is_local_mod(self, stream_token):
-        """ Check if stream_token matches <str-local-mod> """
+        """ Check if stream_token matches StackToken.str_local-mod """
         # A local mod is allowed to be empty
         if stream_token == '':
             return True
@@ -369,19 +383,19 @@ class DiceTable:
         return False
 
     def __is_global_mod(self, stream_token):
-        """ Check if stream_token matches <global-mod> """
+        """ Check if stream_token matches StackToken.global_mod """
         # A global mod has the exact same form as a local mod, so we can reuse
         # the check.
         return self.__is_local_mod(stream_token)
 
     def __is_die_num(self, stream_token):
-        """ Check if stream_token matches <die-num> """
+        """ Check if stream_token matches StackToken.die_num """
         return stream_token.isdecimal()
 
 BNF = """
-<dice-notation> ::= <die-num> <die-type> <global-mod> <drop-mod>
-<die-type> ::= <die-size> | "(" <die-size> <local-mod> ")"
-<drop-mod> ::= <drop-high> <drop-mod> | <drop-low> <drop-mod> | ""
+StackToken.dice_notation ::= StackToken.die_num StackToken.die_type StackToken.global_mod StackToken.drop_mod
+StackToken.die_type ::= StackToken.die_size | "(" StackToken.die_size StackToken.local_mod ")"
+StackToken.drop_mod ::= StackToken.drop_high StackToken.drop_mod | StackToken.drop_low StackToken.drop_mod | ""
 """
 
 
@@ -399,17 +413,17 @@ class Dice:
 
         logging.debug("Saved values: %s", self.saved_value_table)
 
-        self.number = int(self.saved_value_table["<die-num>"])
-        die_size = self.saved_value_table["<die-size>"][1:]
+        self.number = int(self.saved_value_table[StackToken.die_num])
+        die_size = self.saved_value_table[StackToken.die_size][1:]
         if die_size == "F":
             self.size = die_size
         else:
             self.size = int(die_size)
 
-        self.local_mod = self.__get_die_mod("<local-mod>")
-        self.global_mod = self.__get_die_mod("<global-mod>")
-        self.highest_mod = self.__get_drop_mod("<drop-high>")
-        self.lowest_mod = self.__get_drop_mod("<drop-low>")
+        self.local_mod = self.__get_die_mod(StackToken.local_mod)
+        self.global_mod = self.__get_die_mod(StackToken.global_mod)
+        self.highest_mod = self.__get_drop_mod(StackToken.drop_high)
+        self.lowest_mod = self.__get_drop_mod(StackToken.drop_low)
 
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
@@ -527,7 +541,7 @@ def main():
         prog="Dice",
         description="A very complicated way of rolling dice.",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 4.0.0")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 4.1.0")
     parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
     parser.add_argument(
