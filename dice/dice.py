@@ -541,7 +541,7 @@ def main():
         prog="Dice",
         description="A very complicated way of rolling dice.",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 4.0.0")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 4.1.0")
     parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
     parser.add_argument(
