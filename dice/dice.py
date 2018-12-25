@@ -129,7 +129,7 @@ class LLParser:
                     keep_stream_token = False
                     # We only want to save certain tokens like
                     # 'StackToken.die_num', not others like ')'
-                    if stack_element in self.table.tokens_to_save:
+                    if isinstance(stack_element, StackToken):
                         logging.info("Saving value: '%s' = '%s'.", stack_element, stream_token)
                         self.table.saved_value_table[stack_element] = stream_token
                     continue
@@ -173,15 +173,14 @@ class DiceTable:
             StackToken.global_mod: lambda stream_token, strack: False,
             StackToken.drop_mod: self.__drop_mod,
         }
-        self.tokens_to_save = frozenset((
-            StackToken.die_num,
-            StackToken.die_size,
-            StackToken.local_mod,
-            StackToken.global_mod,
-            StackToken.drop_high,
-            StackToken.drop_low,
-        ))
-        self.saved_value_table = {token: None for token in self.tokens_to_save}
+        self.saved_value_table = {
+            StackToken.die_num: None,
+            StackToken.die_size: None,
+            StackToken.local_mod: None,
+            StackToken.global_mod: None,
+            StackToken.drop_high: None,
+            StackToken.drop_low: None,
+        }
 
     def compare(self, token_string, stream_token):
         """ Compare a token from the stream to the token string on the stack.
