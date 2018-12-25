@@ -1,23 +1,19 @@
 #!/usr/bin/python3
 
-"""
-Allows command line options to be parsed. Called first to in order to let
-functions use them.
-"""
-
-import argparse
 from random import randint
+import argparse
+import logging
 
 
-#Tokenizer
 class DiceTokenizer:
     """ Returns a dice token """
-    def __init__(self, input):
+    def __init__(self, input_str):
         """ """
-        self.input = input
+        logging.info("Input string for tokenization: %s", input_str)
+        self.input = input_str
         self.end = len(self.input)
 
-        # The three types of charactesr we encounter in a dice format string
+        # The three types of characters we encounter in a dice format string
         self.INT_CHARS = frozenset(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
         self.FATE_CHARS = frozenset(['F'])
         self.LH_CHARS = frozenset(['L', 'l', 'H', 'h'])
@@ -25,17 +21,18 @@ class DiceTokenizer:
         self.PARENS = frozenset(['(', ')'])
 
     def __iter__(self):
-        """ Allows iteration over self """
+        """ Allows iteration over self. """
         return self.__make_iter()
 
     def __make_iter(self):
-        """ Return next item in iterization """
+        """ Return next item in iterator. """
         buffer = ''
         for i in range(self.end):
             char = self.input[i]
 
             # End of stream check, where we yield all remaining
             if i == self.end - 1 and char in self.INT_CHARS.union(self.LH_CHARS).union(self.FATE_CHARS):
+                logging.debug("Yielding: %s", buffer + char)
                 yield buffer + char
 
             # Handle symbols
@@ -46,6 +43,7 @@ class DiceTokenizer:
                 else:
                     # But if we already have a buffer, we yield it,
                     # and start a new one to avoid "-3-"
+                    logging.debug("Yielding: %s", buffer)
                     yield buffer
                     buffer = char
 
@@ -63,8 +61,10 @@ class DiceTokenizer:
             # by ")". This is why we yield twice, and not add them together.
             elif char in self.PARENS:
                 if buffer:
+                    logging.debug("Yielding: %s", buffer)
                     yield buffer
                     buffer = ''
+                logging.debug("Yielding: %s", char)
                 yield char
 
             # Something illegal!
@@ -73,227 +73,315 @@ class DiceTokenizer:
                 raise ValueError(err)
 
 
-#LL Parser
-class llParser:
-    """ LL Parser """
+class LLParser:
+    """ LL Parser. """
     def __init__(self, table, tokenizer):
-        """ """
         self.table = table
         self.stack = ['<START>']
         self.tokenizer = tokenizer
         self.__loop()
 
     def __loop(self):
-        """ Run while loop until self.stack is empty """
-        for streamElement in self.tokenizer:
-            keepStreamElement = True
-            while keepStreamElement and self.stack:
-                stackElement = self.stack.pop()
-                result = self.table.compare(stackElement, streamElement)
-                #print stackElement, streamElement, result
+        """ Run the LL Parser loop until the stack is empty. """
+        # An LL Parser works as follows:
+        #
+        # 1. It takes a token from the input stream, until the stream is empty.
+        # 2. It takes an element off the stack.
+        # 3. It compares the token with the stack element.
+        # 4. If the token and the element are the same, then it discards both
+        #    items and repeats from 1. This is when we save the result of the
+        #    parsing.
+        # 5. If the stream token and stack element do not match, then it looks
+        #    up an action function in a table indexed by the token and the
+        #    element. It then calls that function, which will often add more
+        #    items to the stack.
+        # 6. The stack element is discarded while the stream token is kept, and
+        #    it repeats at 2.
+
+        logging.info("Beginning loop over tokens.")
+        # Step 1. Take a token from the stream
+        for stream_token in self.tokenizer:
+            keep_stream_token = True
+            # Step 2. Get an element from the stack
+            while keep_stream_token and self.stack:
+                logging.debug("Stack is: '%s'", self.stack)
+                stack_element = self.stack.pop()
+                # Step 3. Compare the token and the element
+                logging.debug("Stack element: '%s'; stream element: '%s'", stack_element, stream_token)
+                result = self.table.compare(stack_element, stream_token)
+                # Step 4. If the token and stack are the same, discard both
+                # (and save the result of parsing), and go back to step 1.
                 if result is True:
-                    keepStreamElement = False
-                    self.table.sTable[stackElement] = streamElement
+                    keep_stream_token = False
+                    # We only want to save certain tokens like '<die-num>', not
+                    # others like ')'
+                    if stack_element in self.table.tokens_to_save:
+                        logging.info("Saving value: '%s' = '%s'.", stack_element, stream_token)
+                        self.table.saved_value_table[stack_element] = stream_token
                     continue
                 else:
-                    self.table.pTable[stackElement](streamElement, self.stack)
+                    # Step 5. They do not match, so call the action function
+                    self.table.stack_action_table[stack_element](stream_token, self.stack)
+                    # Step 6. Go back to step 2.
+
+        # At this point the stack might not be empty, so check that the rest of
+        # the stack is compatible with an empty stream_token. This happens, for
+        # example, when we do not have global mods or drop mods.
         if self.stack:
-            # Out of stream, but still have stack
-            # We check to make sure the stack is isomorphic to ""
-            streamElement = ''
-            while self.stack:
-                stackElement = self.stack.pop()
-                result = self.table.compare(stackElement, streamElement)
-                if result:
-                    continue
-                else:
-                    self.table.pTable[stackElement](streamElement, self.stack)
-            # Need to add a state check to avoid infinite loop in fail case
+            logging.debug("Stack not fully consumed, remaining items: %s", self.stack)
+            # TODO: Replace with actual LL Parser check instead of hard-coding. See:
+            # https://github.com/agude/Dice/issues/1
+            if self.stack != ["<drop-mod>", "<global-mod>"] and self.stack != ["<drop-mod>"]:
+                err = "Stack not fully consumed and remaining items are not compatible with an empty stream: {}".format(self.stack)
+                raise RuntimeError(err)
+            logging.debug("Stack cleared successfully.")
 
 
-#LL Table
-class diceTable:
+class DiceTable:
     """ """
     def __init__(self):
-        self.cTable = {
-                "<START>": None,
-                "<die-type>": None,
-                "<local-mod>": self.__is_local_mod,
-                "<global-mod>": self.__is_global_mod,
-                "<drop>": None,
-                "<int-die-num>": self.__isInt,
-                "<str-die-size>": self.__isStrDieSize,
-                "<str-drop-mod>": None,
-                "<str-drop-high>": self.__is_str_drop_high,
-                "<str-drop-low>": self.__is_str_drop_low,
-                }
-        self.pTable = {
-                "<START>": self.__Start,
-                "<die-type>": self.__dieType,
-                "<drop>": self.__drop,
-                "<str-drop-mod>": self.__strDropMod,
-                "<local-mod>": self.__localMod,
-                "<global-mod>": self.__globalMod,
-                }
-        self.sTable = {
-                "<int-die-num>": None,
-                "<str-die-size>": None,
-                "<str-drop-high>": None,
-                "<str-drop-low>": None,
-                "<global-mod>": None,
-                "<local-mod>": None,
-                }
+        self.comparison_table = {
+            "<START>": None,
+            "<die-type>": None,
+            "<die-num>": self.__is_die_num,
+            "<die-size>": self.__is_str_die_size,
+            "<local-mod>": self.__is_local_mod,
+            "<global-mod>": self.__is_global_mod,
+            "<drop-mod>": None,
+            "<drop-high>": self.__is_str_drop_high,
+            "<drop-low>": self.__is_str_drop_low,
+        }
+        self.stack_action_table = {
+            "<START>": self.__start,
+            "<die-type>": self.__die_type,
+            # Global mod can be blank, in which case we don't have anything to
+            # add to the stack, but we still need to call a function.
+            "<global-mod>": lambda stream_token, strack: False,
+            "<drop-mod>": self.__drop_mod,
+        }
+        self.tokens_to_save = frozenset((
+            "<die-num>",
+            "<die-size>",
+            "<local-mod>",
+            "<global-mod>",
+            "<drop-high>",
+            "<drop-low>",
+        ))
+        self.saved_value_table = {token: None for token in self.tokens_to_save}
 
-    def compare(self, a, b):
-        """ Compare a, b using the compairison table. """
-        if len(a) == 1:
-            # For '(', ')', and other single characters
-            return a == b
-        else:
-            try:
-                compFunction = self.cTable[a]
-            except KeyError:
-                return None  # Should raise error
-            if compFunction is None:
-                return None
+    def compare(self, token_string, stream_token):
+        """ Compare a token from the stream to the token string on the stack.
 
-            return compFunction(b)
+        In an LL Parser, we need to check if the item on the stack
+        (token_string) and the item from the stream (stream_token) match. If
+        they do we remove the items and process the next item in the stream. If
+        they do not match, we take some action and add items to the stack.
 
-    def __Start(self, s, stack):
-        """ Take action when stack status is <START> """
-        stack.append("<drop>")
-        stack.append("<global-mod>")
-        stack.append("<die-type>")
-        stack.append("<int-die-num>")
+        This function compares the two items, which sometimes requires a
+        specialized comparison function specified in the comparison_table.
+
+        For single character token_strings (mostly parenthesis) the equality
+        operator is used to check instead of a specialized function.
+
+        Args:
+            token_string (str): The token string from the stack, like '<START>'
+                or '<die-type>'.
+            stream_token (str): An item from the tokenized stream, like 'd6' or '-H'
+
+        Returns:
+            Bool: True if the stream_token is the same as the token_string, False
+                otherwise.
+
+        """
+        # If a is a single character, then the comparison is just equality
+        if len(token_string) == 1:
+            logging.debug("Comparing: '%s' to '%s' with '=='", token_string, stream_token)
+            return token_string == stream_token
+
+        # Otherwise get the comparison function for the 'a' object and use it
+        comp_function = self.comparison_table[token_string]
+        if comp_function is None:
+            logging.debug("Comp function is 'None' for: '%s' to '%s'", token_string, stream_token)
+            return False
+
+        logging.debug("Comparing: '%s' to '%s' with '%s'", token_string, stream_token, comp_function)
+        return comp_function(stream_token)
+
+    def __start(self, stream_token, stack):
+        """ Take action when stack status is <START>.
+
+        Replaces the <START> token with the four parts of a dice format string:
+
+            <die-num> <die-type> <global-mod> <drop-mod>
+
+        Args:
+            stream_token (str): The token from the stream, although it is ignored.
+            stack (list): The stack of `token_string`s, which we may modify by
+                pushing more `token_string`s onto.
+
+        Returns:
+            True: No matching is required, so always returns true.
+
+        """
+        # Reversed() is used because we use a stack, so the first item to test
+        # is the last item on the stack. However, it is easier for the author
+        # to think left to right.
+        stack += reversed(["<die-num>", "<die-type>", "<global-mod>", "<drop-mod>"])
         return True
 
-    def __dieType(self, s, stack):
-        """ Take action when stack status is <die-type> """
-        if s == '(':
-            stack.append(")")
-            stack.append("<local-mod>")
-            stack.append("<str-die-size>")
-            stack.append("(")
-            return True
-        elif s[0] == 'd':
-            stack.append("<str-die-size>")
-        else:
-            return False
+    def __die_type(self, stream_token, stack):
+        """ Take action when stack status is <die-type>.
 
-    def __drop(self, s, stack):
-        """ Take action when stack status is <drop> """
-        if s == '':
-            # Drop can be blank
-            return True
-        elif s[-1] in ['L', 'l', 'H', 'h']:
-            stack.append("<drop>")
-            stack.append("<str-drop-mod>")
-            return True
-        else:
-            return False
+        Die type can lead down two paths, depending on the `stream_token`. If
+        the `stream_token` is '(', then we might be starting a die type with
+        local mod:
 
-    def __strDropMod(self, s, stack):
-        """ Take action when stack status is <drop> """
-        if s[0] == '-':
-            if s[-1] in ['L', 'l']:
-                stack.append("<str-drop-low>")
+            ( <die-size> <local-mod> )
+
+        Otherwise, if our token starts with 'd', it is just the die size:
+
+            <die-size>
+
+        Args:
+            stream_token (str): The token from the stream.
+            stack (list): The stack of `token_string`s, which we may modify by
+                pushing more `token_string`s onto.
+
+        Returns:
+            bool: True if we successfully matched an action to the
+                `stream_token`, False otherwise.
+
+        """
+        # If we found a parenthesis, then we might have a local mod
+        if stream_token == '(':
+            stack += reversed(["(", "<die-size>", "<local-mod>", ")"])
+            return True
+        # Otherwise it is just a normal die size
+        elif stream_token[0] == 'd':
+            stack.append("<die-size>")
+            return True
+
+        return False
+
+    def __drop_mod(self, stream_token, stack):
+        """ Take action when stack status is <drop-mod>.
+
+        Drop mod is nothing if `stream_token` is empty, or it can by a drop mod
+        low followed by another drop mod if the `stream_token` ends in 'L', or
+        a drop mod high followed by another drop mod if `stream_token` ends in
+        'H', as follows:
+
+            <drop-low> <drop-mod> | <drop-high> <drop-mod>
+
+        Args:
+            stream_token (str): The token from the stream.
+            stack (list): The stack of `token_string`s, which we may modify by
+                pushing more `token_string`s onto.
+
+        Returns:
+            bool: True if we successfully matched an action to the
+                `stream_token`, False otherwise.
+
+        """
+        # Drop can be blank
+        if stream_token == '':
+            return True
+        # Or it can be a drop mod
+        elif stream_token[0] == '-':
+            # either low
+            if stream_token[-1] in ['L', 'l']:
+                stack += reversed(["<drop-low>", "<drop-mod>"])
                 return True
-            elif s[-1] in ['H', 'h']:
-                stack.append("<str-drop-high>")
+            # or high
+            elif stream_token[-1] in ['H', 'h']:
+                stack += reversed(["<drop-high>", "<drop-mod>"])
                 return True
-            else:
-                return False
-        else:
-            return False
 
-    def __localMod(self, s, stack):
-        """ Take action when stack status is <local-mod> """
-        if s == '':
-            # Local mod can be blank
-            return True
-        elif s[-1] in ['L', 'l', 'H', 'h']:
-            # There is no local/global mod
-            # We are already at the drop condition
-            return True
-        elif s[0] in ['-', '+']:
-            stack.append("<str-local-mod>")
-            return True
-        else:
-            return False
+        return False
 
-    def __globalMod(self, s, stack):
-        """ Take action when stack status is <global-mod> """
-        return self.__localMod(s, stack)
+    def __is_str_die_size(self, stream_token):
+        """ Check if s matches <die-size>.
 
-    def __isStrDieSize(self, s):
-        """ Check if s matches <str-die-size> """
+        Args:
+            stream_token (str): The token from the stream.
+
+        Returns:
+            bool: True if we successfully matched an action to the
+                `stream_token`, False otherwise.
+
+        """
         # Must have a "d" as the first part of the token
-        if not s[0] == 'd':
+        if not stream_token[0] == 'd':
             return False
         # Must then be followed by an integer or an F for fate dice
-        is_int = s[1:].isdigit()
-        if not is_int and s[1] != 'F':
+        is_int = stream_token[1:].isdecimal()
+        if not is_int and stream_token[1] != 'F':
             return False
 
         return True
 
-    def __is_str_drop_mod(self, s, chars):
-        """ Check if s matches <str-drop-low> """
+    def __is_str_drop_mod(self, stream_token, chars):
+        """ Check if stream_token matches <drop-low>.
+
+        Args:
+            stream_token (str): The token from the stream.
+            chars (supports in): An object that supports `in` testing,
+                containing the acceptable drop mode flags, normally ['l', 'L']
+                for lowest and ['h', 'H'] for highest.
+
+        Returns:
+            bool: True if we successfully matched an action to the
+                `stream_token`, False otherwise.
+
+        """
         # A drop mod has three pieces:
         #
         # It starts with a -
-        has_minus = s[0] == '-'
+        has_minus = stream_token[0] == '-'
         # It ends with a specific character
-        has_char = s[-1] in chars
-        # And the midle is an integer or empty
-        mid = s[1:-1]
-        ok_mid = mid == '' or mid.isdigit()
+        has_char = stream_token[-1] in chars
+        # And the middle is an integer or empty
+        mid = stream_token[1:-1]
+        ok_mid = mid == '' or mid.isdecimal()
 
         return has_minus and has_char and ok_mid
 
-    def __is_str_drop_low(self, s):
-        """ Check if s matches <str-drop-low> """
-        return self.__is_str_drop_mod(s, chars=['L', 'l'])
+    def __is_str_drop_low(self, stream_token):
+        """ Check if stream_token matches <drop-low> """
+        return self.__is_str_drop_mod(stream_token, chars=['L', 'l'])
 
-    def __is_str_drop_high(self, s):
-        """ Check if s matches <str-drop-high> """
-        return self.__is_str_drop_mod(s, chars=['H', 'h'])
+    def __is_str_drop_high(self, stream_token):
+        """ Check if stream_token matches <drop-high> """
+        return self.__is_str_drop_mod(stream_token, chars=['H', 'h'])
 
-    def __is_local_mod(self, s):
-        """ Check if s matches <local-mod> """
+    def __is_local_mod(self, stream_token):
+        """ Check if stream_token matches <str-local-mod> """
         # A local mod is allowed to be empty
-        if s == '':
+        if stream_token == '':
             return True
         # Otherwise it must look like a sign and an integer
-        has_sign = s[0] in ['-', '+']
-        has_int = s[1:].isdigit()
+        has_sign = stream_token[0] in ['-', '+']
+        has_int = stream_token[1:].isdecimal()
 
         if has_sign and has_int:
             return True
 
         return False
 
-    def __is_global_mod(self, s):
-        """ Check if s matches <global-mod> """
+    def __is_global_mod(self, stream_token):
+        """ Check if stream_token matches <global-mod> """
         # A global mod has the exact same form as a local mod, so we can reuse
         # the check.
-        return self.__is_local_mod(s)
+        return self.__is_local_mod(stream_token)
 
-    def __isInt(self, s):
-        """ Check if s is an integer """
-        try:
-            int(s)
-            return True
-        except ValueError:
-            return False
+    def __is_die_num(self, stream_token):
+        """ Check if stream_token matches <die-num> """
+        return stream_token.isdecimal()
 
 BNF = """
-<dice-notation> ::= <int-die-num> <die-type> <global-mod> <drop>
-<die-type> ::= <str-die-size> | "(" <str-die-size> <local-mod> ")"
-<local-mod> ::= <str-local-mod> | ""
-<global-mod> ::= <str-global-mod> | ""
-<drop> ::= <str-drop-mod> <drop> | ""
-<str-drop-mod> ::= <str-drop-high> | <str-drop-low>
+<dice-notation> ::= <die-num> <die-type> <global-mod> <drop-mod>
+<die-type> ::= <die-size> | "(" <die-size> <local-mod> ")"
+<drop-mod> ::= <drop-high> <drop-mod> | <drop-low> <drop-mod> | ""
 """
 
 
@@ -301,16 +389,18 @@ BNF = """
 class Dice:
     """ A class to roll dice based on a dice format string. """
 
-    def __init__(self, dice_str, parser=llParser, tokenizer=DiceTokenizer, table=diceTable):
+    def __init__(self, dice_str, parser=LLParser, tokenizer=DiceTokenizer, table=DiceTable):
         """ Sets up the dice by parsing a string of its type: 3d5 """
         self.dice_str = dice_str
-        self.table = diceTable()
-        self.tokenizer = DiceTokenizer(self.dice_str)
+        self.table = table()
+        self.tokenizer = tokenizer(self.dice_str)
         self.parser = parser(self.table, self.tokenizer)
-        self.sTable = self.table.sTable
+        self.saved_value_table = self.table.saved_value_table
 
-        self.number = int(self.sTable["<int-die-num>"])
-        die_size = self.sTable["<str-die-size>"][1:]
+        logging.debug("Saved values: %s", self.saved_value_table)
+
+        self.number = int(self.saved_value_table["<die-num>"])
+        die_size = self.saved_value_table["<die-size>"][1:]
         if die_size == "F":
             self.size = die_size
         else:
@@ -318,23 +408,52 @@ class Dice:
 
         self.local_mod = self.__get_die_mod("<local-mod>")
         self.global_mod = self.__get_die_mod("<global-mod>")
-        self.highest_mod = self.__get_drop_mod("<str-drop-high>")
-        self.lowest_mod = self.__get_drop_mod("<str-drop-low>")
+        self.highest_mod = self.__get_drop_mod("<drop-high>")
+        self.lowest_mod = self.__get_drop_mod("<drop-low>")
 
         # If we have a global mod, we must sum all the dice to apply it
         self.do_sum = bool(self.global_mod)
+        if self.do_sum:
+            logging.info("Turning on summing as required by presence of a global mod.")
 
-    def __get_die_mod(self, modStr):
+        # Error checking to make sure the above values lead to valid
+        # combinations of dice.
+        self.__do_error_checking()
+
+    def __do_error_checking(self):
+        # If we are rolling 0 (or fewer) dice
+        if self.number < 1:
+            err = "Number of dice {} is less than 1.".format(self.number)
+            raise ValueError(err)
+
+        # If the die size is less than 2, then there are no interesting results
+        if self.size != "F" and self.size < 2:
+            err = "Die size of {} is less than 2.".format(self.size)
+            raise ValueError(err)
+
+        # If we have zero (or fewer) dice left after dropping
+        if self.highest_mod + self.lowest_mod >= self.number:
+            dropped = self.highest_mod + self.lowest_mod
+            err = "Number of dice dropped ({}) greater than or equal to number rolled ({}).".format(dropped, self.number)
+            raise ValueError(err)
+
+        # If the local mod is too large, all rolls will be 0
+        # (but Fate dice are allowed to go negative, so we ignore in that case)
+        if self.size != "F" and self.size + self.local_mod <= 0:
+            err = "Local mod {} is larger than die size {}; all rolls would be 0!".format(self.local_mod, self.size)
+            raise ValueError(err)
+
+    def __get_die_mod(self, mod_str):
         """ Get general die mod """
-        mod = self.sTable.get(modStr, None)
+        mod = self.saved_value_table.get(mod_str, None)
         if mod is None:
             return 0
 
         return int(mod)
 
-    def __get_drop_mod(self, modStr):
-        """ Get geneal drop mod """
-        mod = self.sTable[modStr]
+    def __get_drop_mod(self, mod_str):
+        """ Get general drop mod """
+        mod = self.saved_value_table[mod_str]
 
         # No modifier
         if mod is None:
@@ -352,31 +471,53 @@ class Dice:
 
     def roll(self, do_sum=False):
         """ Roll the dice and print the result. """
+        logging.info("Rolling dice")
         # Generate rolls
         values = []
         for _ in range(0, self.number):
             # Fate Dice use F, and have sides (-1, 0, 1)
             if self.size == "F":
-                die_val = randint(-1, 1) + self.local_mod
+                rand_val = randint(-1, 1)
+                die_val = rand_val + self.local_mod
+                logging.debug("Roll value is %i = %i%i", die_val, rand_val, self.local_mod)
             else:
-                die_val = randint(1, self.size) + self.local_mod
+                rand_val = randint(1, self.size)
+                die_val = rand_val + self.local_mod
+                logging.debug("Roll value is %i = %i%i", die_val, rand_val, self.local_mod)
+
                 die_val = max(die_val, 0)  # Dice must roll at least 0 after mods
+                logging.debug("Roll value is '%i' after max()", die_val)
 
             values.append(die_val)
 
         # Remove highest and lowest dice
-        start_i = self.lowest_mod
-        end_i = len(values) - self.highest_mod
+        if self.lowest_mod >= 1 or self.highest_mod >= 1:
+            logging.info("Dropping High/Low dice.")
+            start_i = self.lowest_mod
+            end_i = len(values) - self.highest_mod
+            sorted_values = sorted(values)
 
-        values = sorted(values)[start_i:end_i]
+            logging.debug("Sorted dice values pre-dropping: %s", sorted_values)
+            low_dice = sorted_values[:start_i]
+            if low_dice:
+                logging.debug("Dropping low dice: %s", low_dice)
+
+            high_dice = sorted_values[end_i:]
+            if high_dice:
+                logging.debug("Dropping low dice: %s", high_dice)
+
+            values = sorted_values[start_i:end_i]
+
+        logging.debug("Final die values: %s", values)
 
         #Return values
         if self.do_sum or do_sum:
+            logging.info("Summing dice.")
             output = sum(values) + self.global_mod
         else:
             output = values
 
-        print(output)
+        logging.debug("Final results: %s", output)
         return output
 
 
@@ -386,13 +527,33 @@ def main():
         prog="Dice",
         description="A very complicated way of rolling dice.",
     )
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 3.1.2")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 4.0.0")
     parser.add_argument("dice_notation", type=str, help="the dice notation for the dice to roll, such as '4d6'")
     parser.add_argument("-s", "--sum", help="sum the results of the roll", action="store_true", default=False)
+    parser.add_argument(
+        "--log",
+        help="set the logging level, defaults to WARNING",
+        dest="log_level",
+        default=logging.WARNING,
+        choices=[
+            'DEBUG',
+            'INFO',
+            'WARNING',
+            'ERROR',
+            'CRITICAL',
+        ],
+    )
+
     args = parser.parse_args()
 
+    # Set the logging level based on the arguments
+    logging.basicConfig(level=args.log_level)
+
+    logging.debug("Arguments: %s", args)
+
+    # Set up and roll the dice
     d = Dice(args.dice_notation)
-    d.roll(args.sum)
+    print(d.roll(args.sum))
 
 
 if __name__ == '__main__':
